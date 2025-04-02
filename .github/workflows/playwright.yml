@@ -1,5 +1,7 @@
 name: Playwright Tests
 on: workflow_dispatch
+permissions:
+  contents: write
 jobs:
   test:
     timeout-minutes: 60
@@ -15,14 +17,14 @@ jobs:
         run: npx playwright install --with-deps
       - name: Run Playwright tests
         run: npx playwright test
-      - name: Checkout gh-pages branch
-        run: git checkout --orphan gh-pages
-      - name: Add generated report to git
-        run: git --work-tree playwright-report add --all
-      - name: Commit and push changes
-        run: git --work-tree playwright-report commit -m 'Deploy'
-      - name: Push to GitHub Pages
-        run: git push origin HEAD:gh-pages --force
+      - name: Push to GitHub Pagesƒ
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout --orphan gh-pages
+          git --work-tree playwright-report add --all
+          git --work-tree playwright-report commit -m 'Deploy'
+          git push origin HEAD:gh-pages --force
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
