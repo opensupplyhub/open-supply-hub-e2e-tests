@@ -20,4 +20,18 @@ test("Smoke: Main page. Log-in with valid credentials", async ({ page }) => {
   await page.getByLabel("Password", { exact: true }).fill(USER_PASSWORD!);
   await page.getByRole("button", { name: "Log In" }).click();
   await expect(page.getByRole("button", { name: "My Account" })).toBeVisible();
+
+  // make sure that we have successfully logged in
+  await page.getByRole("button", { name: "My Account" }).click();
+  await page.getByRole("link", { name: "Settings" }).click();
+  await page.isVisible(`text=${USER_EMAIL}`);
+  await page.getByRole("button", { name: "My Account" }).click();
+
+  // log the user out and make sure we are logged out
+  await page.getByRole("button", { name: "Log Out" }).click();
+  await expect(page.getByText("text=My Account")).not.toBeVisible();
+  await page.waitForResponse(
+    async (resp) => resp.url().includes("/user-logout/") && resp.status() == 204
+  );
+  await expect(page.getByText("Login/Register")).toBeVisible();
 });
