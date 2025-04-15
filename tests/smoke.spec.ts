@@ -3,7 +3,9 @@ import { setup } from "./utils/env";
 
 test.beforeAll(setup);
 
-test("Smoke: Main page. Log-in with valid credentials", async ({ page }) => {
+test("OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
+  page,
+}) => {
   const { BASE_URL } = process.env;
   await page.goto(BASE_URL!);
 
