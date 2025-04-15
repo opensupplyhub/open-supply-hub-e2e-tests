@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { config } from "dotenv";
+import { setup } from "./utils/env";
 
-test.beforeAll(async () => {
-  config();
+test.beforeAll(setup);
+
+test("Smoke: Main page. Log-in with valid credentials", async ({ page }) => {
+  await page.goto(process.env.BASE_URL!);
 });
-
-test("", async ({ page }) => {});
