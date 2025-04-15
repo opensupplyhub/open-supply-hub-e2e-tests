@@ -7,6 +7,7 @@ test("Smoke: Main page. Log-in with valid credentials", async ({ page }) => {
   const { BASE_URL } = process.env;
   await page.goto(BASE_URL!);
 
+  // make sure that we are on the main page
   const title = await page.title();
   expect(title).toBe("Open Supply Hub");
 
