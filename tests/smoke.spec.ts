@@ -38,3 +38,23 @@ test("OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
   );
   await expect(page.getByText("Login/Register")).toBeVisible();
 });
+
+test("Django x  Admin Web IU login-logout", async ({ page }) => {
+  await page.goto(`${baseURL}/admin/login/?next=/admin/`);
+  await page.getByLabel("Email:").click();
+  await page.getByLabel("Email:").fill("nazar.kolos@speedandfunction.com");
+  await page.getByLabel("Password:").click();
+  await page.getByLabel("Password:").fill("q1xvg67QAZ");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(
+    page.getByRole("link", { name: "Open Supply Hub Admin" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Api" }).getByRole("caption")
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Log out" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Recent actions" })
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Log out" }).click();
+});
