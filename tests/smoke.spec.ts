@@ -38,3 +38,24 @@ test("OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
   );
   await expect(page.getByText("Login/Register")).toBeVisible();
 });
+
+test("Not existing p-locationsearch", async ({ page }) => {
+  await page.goto(baseURL);
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+  await page
+    .getByPlaceholder("e.g. ABC Textiles Limited")
+    .fill("invalid ABRACADABRA");
+  await page.getByRole("button", { name: "Find Facilities" }).click();
+  await expect(page.getByText("No facilities matching this")).toBeVisible();
+});
+
+test("Existing p-location-searchest", async ({ page }) => {
+  await page.goto("https://test.os-hub.net/");
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+  await page
+    .getByPlaceholder("e.g. ABC Textiles Limited")
+    .fill("coffee factory");
+  await page.getByRole("button", { name: "Find Facilities" }).click();
+  await page.waitForTimeout(10000);
+  await expect(page.getByText("# Contributors")).toBeVisible();
+});
