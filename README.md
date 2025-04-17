@@ -20,6 +20,14 @@ Please go through the following steps to run the project locally.
   npm i
   ```
 
+- In the root directory create a file called `.env`, with the following variables (replace the values with actual values):
+
+```bash
+BASE_URL=https://test.os-hub.net
+USER_EMAIL={email}
+USER_PASSWORD={password}
+```
+
 - In order to run the tests:
 
   ```bash
