@@ -83,3 +83,10 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).not.toBeVisible();
   await expect(page.getByText("Log in again")).toBeVisible();
 });
+
+
+test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+  page,
+}) => {
+
+});
