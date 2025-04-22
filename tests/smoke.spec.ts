@@ -120,7 +120,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
   test("Get unauthorized response from `/facilities` endpoint", async ({
     request,
   }) => {
-    const response = await await get(request, "/api/facilities/", {
+    const response = await get(request, "/api/facilities/", {
       authenticate: false,
     });
     expect(response.status()).toBe(401);
