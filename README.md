@@ -26,6 +26,7 @@ Please go through the following steps to run the project locally.
 BASE_URL=https://test.os-hub.net
 USER_EMAIL={email}
 USER_PASSWORD={password}
+AUTH_TOKEN={token}
 ```
 
 - In order to run the tests:
