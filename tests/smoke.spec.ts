@@ -34,7 +34,6 @@ test("OSDEV-1232: Facilities. Valid search parameters", async ({ page }) => {
   await page.waitForResponse(
     async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() == 200
   );
-  //await page.waitForTimeout(10000);
   await expect(page.getByText("# Contributors")).toBeVisible();
 });
 
