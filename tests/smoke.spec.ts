@@ -7,7 +7,6 @@ test("OSDEV-1232: Facilities. Invalid search parameters",  async ({ page }) => {
   const { BASE_URL } = process.env;
   await page.goto(BASE_URL!);
 
-
   const invalidSearchQuery = "invalid ABRACADABRA";
   await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
   await page
