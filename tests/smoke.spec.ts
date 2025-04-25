@@ -36,21 +36,3 @@ test("OSDEV-1232: Facilities. Valid search parameters", async ({ page }) => {
   await expect(page.getByText("# Contributors")).toBeVisible();
 });
 
-
-test("OSDEV-1232: Facilities. Search by OSID", async ({ page }) => {
-  const { BASE_URL } = process.env;
-
-  await page.goto(BASE_URL!);
-   const validSearchQuery = "coffee factory";
-  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
-  await page
-    .getByPlaceholder("e.g. ABC Textiles Limited")
-    .fill(validSearchQuery);
-  await page.getByRole("button", { name: "Find Facilities" }).click();
-  await page.waitForResponse(
-    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() == 200
-  );
-  await expect(page.getByText("# Contributors")).toBeVisible();
-});
-
-
