@@ -125,4 +125,42 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     });
     expect(response.status()).toBe(401);
   });
+
+  test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(BASE_URL + "/dashboard/moderation-queue/"!);
+
+    // make sure that we can not open the Moderation queue page of Dashboard without authorization
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
+    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+
+    // make sure that we are on the Moderation queue page of Dashboard
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+
+    // Moderation Queue link is available in the Dashboard
+    const moderationQueueLink = page.getByRole("link", { name: "Moderation Queue" });
+    await expect(moderationQueueLink).toBeVisible();
+
+    // Moderation Queue page is opened successfully
+    await moderationQueueLink.click();
+    await expect(page.getByRole('heading', { name: 'Dashboard / Moderation Queue' }).getByRole('link')).toBeVisible();
+
+
+    // only moderator has access
+    // Moderation events can be filtered
+    // Pagination 25/50/100 is available
+    // A Data Moderator can download data from active page
+    // Moderation events can be opened
+  });
 });
