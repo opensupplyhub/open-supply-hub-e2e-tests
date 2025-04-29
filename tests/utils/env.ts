@@ -1,21 +1,22 @@
 import { config } from "dotenv";
 
+const requiredVars = [
+  "BASE_URL",
+  "USER_EMAIL",
+  "USER_PASSWORD",
+  "AUTH_TOKEN",
+  "USER_ADMIN_EMAIL",
+  "USER_ADMIN_PASSWORD",
+  "USER_API_EMAIL",
+  "USER_API_PASSWORD",
+];
+
 export async function setup() {
   config();
 
-  if (!process.env.BASE_URL) {
-    throw new Error("BASE_URL is not defined");
-  }
-
-  if (!process.env.USER_EMAIL) {
-    throw new Error("USER_EMAIL is not defined");
-  }
-
-  if (!process.env.USER_PASSWORD) {
-    throw new Error("USER_PASSWORD is not defined");
-  }
-
-  if (!process.env.AUTH_TOKEN) {
-    throw new Error("AUTH_TOKEN is not defined");
-  }
+  requiredVars.forEach((name) => {
+    if (!process.env[name]) {
+      throw new Error(`'${name}' env variable is not defined`);
+    }
+  });
 }
