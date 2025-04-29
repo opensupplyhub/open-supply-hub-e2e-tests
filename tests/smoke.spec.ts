@@ -158,9 +158,51 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
 
 
     // only moderator has access
-    // Moderation events can be filtered
+    // Moderation events can be filtered by Moderation Status, Source Type, Country Name
+    async function checkFilter(id: string, option: string, label:string) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(`${id} .select__control`);
+      const selectLocator = page.locator(`${id} .select__control`);
+
+      await selectLocator.waitFor({ state: 'visible' });
+      await selectLocator.click({ force: true });
+      const optionEl = page.locator('.select__option', { hasText: option });
+
+      await optionEl.waitFor({ state: 'visible' });
+      await optionEl.click({ force: true });
+
+      await page.waitForLoadState('networkidle');
+
+      const headers = page.locator('table thead tr th');
+      const headerCount = await headers.count();
+      let statusColIndex = -1;
+
+      for (let i = 0; i < headerCount; i++) {
+        const spanText = await headers.nth(i).locator('span[role="button"]').innerText();
+        if (spanText.trim().startsWith(label)) {
+          statusColIndex = i;
+          break;
+        }
+      }
+      if (statusColIndex === -1) throw new Error(`${label} column not found`);
+      const rows = page.locator('table tbody tr');
+      const rowCount = await rows.count();
+      const statuses: string[] = [];
+
+      for (let i = 0; i < rowCount; i++) {
+        const cell = rows.nth(i).locator('td').nth(statusColIndex);
+        const text = await cell.innerText();
+        statuses.push(text.trim());
+      }
+      const uniqueStatuses = [...new Set(statuses)];
+      expect(uniqueStatuses).toEqual([option]);
+    }
+    await checkFilter('#MODERATION_STATUS', 'APPROVED','Moderation Status');
+    await checkFilter('#DATA_SOURCE', 'API', 'Source Type');
+    await checkFilter('#COUNTRY', 'United States', 'Country');
+
     // Pagination 25/50/100 is available
     // A Data Moderator can download data from active page
-    // Moderation events can be opened
   });
 });
