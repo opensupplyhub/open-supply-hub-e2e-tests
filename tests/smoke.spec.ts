@@ -125,84 +125,84 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     });
     expect(response.status()).toBe(401);
   });
+});
 
-  test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager", async ({
-    page,
-  }) => {
-    const { BASE_URL } = process.env;
-    await page.goto(BASE_URL + "/dashboard/moderation-queue/"!);
+test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager", async ({
+  page,
+}) => {
+  const { BASE_URL } = process.env;
+  await page.goto(BASE_URL + "/dashboard/moderation-queue/"!);
 
-    // make sure that we can not open the Moderation queue page of Dashboard without authorization
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
-    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible();
+  // make sure that we can not open the Moderation queue page of Dashboard without authorization
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
+  await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible();
 
-    // fill in login credentials
-    const { USER_EMAIL, USER_PASSWORD } = process.env;
-    await page.getByLabel("Email").fill(USER_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(USER_PASSWORD!);
-    await page.getByRole("button", { name: "Log In" }).click();
+  // fill in login credentials
+  const { USER_EMAIL, USER_PASSWORD } = process.env;
+  await page.getByLabel("Email").fill(USER_EMAIL!);
+  await page.getByRole('textbox', { name: 'Password' }).fill(USER_PASSWORD!);
+  await page.getByRole("button", { name: "Log In" }).click();
 
-    // make sure that we are on the Moderation queue page of Dashboard
-    await page.getByRole("button", { name: "My Account" }).click();
-    await page.getByRole("link", { name: "Dashboard" }).click();
-    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  // make sure that we are on the Moderation queue page of Dashboard
+  await page.getByRole("button", { name: "My Account" }).click();
+  await page.getByRole("link", { name: "Dashboard" }).click();
+  await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
 
-    // Moderation Queue link is available in the Dashboard
-    const moderationQueueLink = page.getByRole("link", { name: "Moderation Queue" });
-    await expect(moderationQueueLink).toBeVisible();
+  // Moderation Queue link is available in the Dashboard
+  const moderationQueueLink = page.getByRole("link", { name: "Moderation Queue" });
+  await expect(moderationQueueLink).toBeVisible();
 
-    // Moderation Queue page is opened successfully
-    await moderationQueueLink.click();
-    await expect(page.getByRole('heading', { name: 'Dashboard / Moderation Queue' }).getByRole('link')).toBeVisible();
+  // Moderation Queue page is opened successfully
+  await moderationQueueLink.click();
+  await expect(page.getByRole('heading', { name: 'Dashboard / Moderation Queue' }).getByRole('link')).toBeVisible();
 
 
-    // only moderator has access
-    // Moderation events can be filtered by Moderation Status, Source Type, Country Name
-    async function checkFilter(id: string, option: string, label:string) {
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector(`${id} .select__control`);
-      const selectLocator = page.locator(`${id} .select__control`);
+  // only moderator has access
+  // Moderation events can be filtered by Moderation Status, Source Type, Country Name
+  async function checkFilter(id: string, option: string, label:string) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector(`${id} .select__control`);
+    const selectLocator = page.locator(`${id} .select__control`);
 
-      await selectLocator.waitFor({ state: 'visible' });
-      await selectLocator.click({ force: true });
-      const optionEl = page.locator('.select__option', { hasText: option });
+    await selectLocator.waitFor({ state: 'visible' });
+    await selectLocator.click({ force: true });
+    const optionEl = page.locator('.select__option', { hasText: option });
 
-      await optionEl.waitFor({ state: 'visible' });
-      await optionEl.click({ force: true });
+    await optionEl.waitFor({ state: 'visible' });
+    await optionEl.click({ force: true });
 
-      await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle');
 
-      const headers = page.locator('table thead tr th');
-      const headerCount = await headers.count();
-      let statusColIndex = -1;
+    const headers = page.locator('table thead tr th');
+    const headerCount = await headers.count();
+    let statusColIndex = -1;
 
-      for (let i = 0; i < headerCount; i++) {
-        const spanText = await headers.nth(i).locator('span[role="button"]').innerText();
-        if (spanText.trim().startsWith(label)) {
-          statusColIndex = i;
-          break;
-        }
+    for (let i = 0; i < headerCount; i++) {
+      const spanText = await headers.nth(i).locator('span[role="button"]').innerText();
+      if (spanText.trim().startsWith(label)) {
+        statusColIndex = i;
+        break;
       }
-      if (statusColIndex === -1) throw new Error(`${label} column not found`);
-      const rows = page.locator('table tbody tr');
-      const rowCount = await rows.count();
-      const statuses: string[] = [];
-
-      for (let i = 0; i < rowCount; i++) {
-        const cell = rows.nth(i).locator('td').nth(statusColIndex);
-        const text = await cell.innerText();
-        statuses.push(text.trim());
-      }
-      const uniqueStatuses = [...new Set(statuses)];
-      expect(uniqueStatuses).toEqual([option]);
     }
-    await checkFilter('#MODERATION_STATUS', 'APPROVED','Moderation Status');
-    await checkFilter('#DATA_SOURCE', 'API', 'Source Type');
-    await checkFilter('#COUNTRY', 'United States', 'Country');
+    if (statusColIndex === -1) throw new Error(`${label} column not found`);
+    const rows = page.locator('table tbody tr');
+    const rowCount = await rows.count();
+    const statuses: string[] = [];
 
-    // Pagination 25/50/100 is available
-    // A Data Moderator can download data from active page
-  });
+    for (let i = 0; i < rowCount; i++) {
+      const cell = rows.nth(i).locator('td').nth(statusColIndex);
+      const text = await cell.innerText();
+      statuses.push(text.trim());
+    }
+    const uniqueStatuses = [...new Set(statuses)];
+    expect(uniqueStatuses).toEqual([option]);
+  }
+  await checkFilter('#MODERATION_STATUS', 'APPROVED','Moderation Status');
+  await checkFilter('#DATA_SOURCE', 'API', 'Source Type');
+  await checkFilter('#COUNTRY', 'United States', 'Country');
+
+  // Pagination 25/50/100 is available
+  // A Data Moderator can download data from active page
 });
