@@ -140,7 +140,7 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
   await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible();
-
+  // Test step 1: Only Moderator has access
   // fill in login credentials
   const { USER_EMAIL, USER_PASSWORD } = process.env;
   await page.getByLabel("Email").fill(USER_EMAIL!);
@@ -160,8 +160,6 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await moderationQueueLink.click();
   await expect(page.getByRole('heading', { name: 'Dashboard / Moderation Queue' }).getByRole('link')).toBeVisible();
 
-
-  // only moderator has access
   // Test step 4: Moderation events can be filtered by Moderation Status, Source Type, Country Name
   async function checkFilter(id: string, option: string, label:string) {
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -171,15 +169,6 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
 
     await selectLocator.waitFor({ state: 'visible' });
     await selectLocator.click({ force: true });
-    // if(id === '#COUNTRIES') {
-    //   await page.locator('input[aria-autocomplete="list"]').nth(2).fill(option);
-    //   const optionEL = page.locator('.select__option', { hasText: /^United States$/ }).first();
-    //   await optionEL.waitFor({ state: 'visible' });
-    //   await optionEL.click({ force: true });
-    //   // await page.locator('.select__option', { hasText: option }).click({ force: true });
-    // }
-    // const count = await page.locator('.select__option', { hasText: option }).count()
-    // const optionEl = count > 1 ? page.locator('.select__option', { hasText: option }).nth(-1) : page.locator('.select__option', { hasText: option });
     const optionEl = page.locator('.select__option', { hasText: new RegExp(`^${option}$`) })
     await optionEl.waitFor({ state: 'visible' });
     await optionEl.click({ force: true });
@@ -212,7 +201,7 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   }
   await checkFilter('#MODERATION_STATUS', 'APPROVED','Moderation Status');
   await checkFilter('#DATA_SOURCE', 'API', 'Source Type');
-  // await checkFilter('#COUNTRIES', 'United States', 'Country');
+  await checkFilter('#COUNTRIES', 'United States', 'Country');
 
   // Test step 5: Pagination 25/50/100 is available
   await page.reload({ waitUntil: 'networkidle' }); // reset all filters
