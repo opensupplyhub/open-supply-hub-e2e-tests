@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import * as path from 'path';
+import * as fs from 'fs';
+
 
 test.beforeAll(setup);
 
@@ -231,6 +234,39 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('table tbody tr')).toHaveCount(100);
+
   // Test step 6: A Data Moderator can download data from active page
+  const downloadPath = path.resolve(__dirname, 'downloads');
+  const downloadPromise = page.waitForEvent('download');
+
+  const downloadButton = page.locator('button[aria-label="Download Excel"]');
+  await expect(downloadButton).toBeVisible();
+  await expect(downloadButton).toBeEnabled();
+  downloadButton.click();
+
+  const download = await downloadPromise;
+  const filePath = path.join(downloadPath, download.suggestedFilename());
+
+  await download.saveAs(filePath);
+
+  const fileExists = fs.existsSync(filePath);
+  expect(fileExists).toBe(true);
+
+  const fileName = path.basename(filePath);
+  expect(fileName).toBe('moderation_events.xlsx');
+
   // Test step 7: Moderation events can be opened
+  const row = page.locator('table tbody tr:first-child');
+
+  await expect(row).toBeVisible();
+  await expect(row).toBeEnabled();
+
+  const [newPage] = await Promise.all([
+    page.context().waitForEvent('page'),
+    row.click(),
+  ]);
+
+  await newPage.waitForLoadState('load');
+  expect(newPage.url()).toContain(`/dashboard/moderation-queue/`);
+  await expect(newPage.getByRole('heading', { name: 'Dashboard / Moderation Queue / Contribution Record' })).toBeVisible();
 });
