@@ -212,5 +212,24 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   // await checkFilter('#COUNTRIES', 'United States', 'Country');
 
   // Pagination 25/50/100 is available
+  await page.reload({ waitUntil: 'networkidle' }); // reset all filters
+  // Check default settings for page
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.getByRole('button', { name: '25' }).waitFor({ state: 'visible' });
+  await expect(page.locator('table tbody tr')).toHaveCount(25);
+  // Set 50 items per page
+  await page.getByRole('button', { name: '25' }).click();
+  await page.locator('li', { hasText: '50' }).waitFor({ state: 'visible' });
+  await page.locator('li', { hasText: '50' }).click();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('table tbody tr')).toHaveCount(50);
+  // Set 50 items per page
+  await page.getByRole('button', { name: '50' }).click();
+  await page.locator('li', { hasText: '100' }).waitFor({ state: 'visible' });
+  await page.locator('li', { hasText: '100' }).click();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('table tbody tr')).toHaveCount(100);
   // A Data Moderator can download data from active page
 });
