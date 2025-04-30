@@ -149,17 +149,17 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await page.getByRole("link", { name: "Dashboard" }).click();
   await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
 
-  // Moderation Queue link is available in the Dashboard
+  // Test step 2: Moderation Queue link is available in the Dashboard
   const moderationQueueLink = page.getByRole("link", { name: "Moderation Queue" });
   await expect(moderationQueueLink).toBeVisible();
 
-  // Moderation Queue page is opened successfully
+  // Test step 3: Moderation Queue page is opened successfully
   await moderationQueueLink.click();
   await expect(page.getByRole('heading', { name: 'Dashboard / Moderation Queue' }).getByRole('link')).toBeVisible();
 
 
   // only moderator has access
-  // Moderation events can be filtered by Moderation Status, Source Type, Country Name
+  // Test step 4: Moderation events can be filtered by Moderation Status, Source Type, Country Name
   async function checkFilter(id: string, option: string, label:string) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForLoadState('networkidle');
@@ -211,7 +211,7 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await checkFilter('#DATA_SOURCE', 'API', 'Source Type');
   // await checkFilter('#COUNTRIES', 'United States', 'Country');
 
-  // Pagination 25/50/100 is available
+  // Test step 5: Pagination 25/50/100 is available
   await page.reload({ waitUntil: 'networkidle' }); // reset all filters
   // Check default settings for page
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -231,5 +231,6 @@ test("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dash
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('table tbody tr')).toHaveCount(100);
-  // A Data Moderator can download data from active page
+  // Test step 6: A Data Moderator can download data from active page
+  // Test step 7: Moderation events can be opened
 });
