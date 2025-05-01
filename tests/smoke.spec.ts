@@ -126,3 +126,63 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     expect(response.status()).toBe(401);
   });
 });
+
+test("OSDEV-1232: Facilities. Invalid search parameters",  async ({ page }) => {
+  const { BASE_URL } = process.env;
+  await page.goto(BASE_URL!);
+
+  const invalidSearchQuery = "invalid ABRACADABRA";
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+  await page
+    .getByPlaceholder("e.g. ABC Textiles Limited")
+    .fill(invalidSearchQuery); 
+  
+  await page.getByRole("button", { name: "Find Facilities" }).click();
+  await page.waitForResponse(
+    async (resp) => resp.url().includes(`api/facilities/?q=`) && resp.status() == 200
+  );
+  await expect(page.getByText("No facilities matching this")).toBeVisible();
+});
+
+test("OSDEV-1232: Facilities. Valid search parameters", async ({ page }) => {
+  const { BASE_URL } = process.env;
+
+  await page.goto(BASE_URL!);
+   const validSearchQuery = "coffee factory";
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+  await page
+    .getByPlaceholder("e.g. ABC Textiles Limited")
+    .fill(validSearchQuery);
+  await page.getByRole("button", { name: "Find Facilities" }).click();
+  await page.waitForResponse(
+    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() == 200
+  );
+  await expect(page.getByText("# Contributors")).toBeVisible();
+});
+
+
+test('"OSDEV-1232: Facilities. Country Search', async ({ page }) => {
+  const { BASE_URL } = process.env;
+
+  await page.goto(BASE_URL!);
+
+  // Click the correct dropdown (2nd "Select" under #COUNTRIES)
+  const countryDropdown = page.locator('#COUNTRIES div').filter({ hasText: 'Select' }).nth(1);
+  const countryDropdownUnitedStates = page.locator('#COUNTRIES div').filter({ hasText: 'United States' }).nth(1);
+  await countryDropdown.click();
+
+  // Now type into the input that appears inside the open dropdown
+  const countryInput = countryDropdown.locator('input');
+  await countryInput.fill('united states');
+  await countryDropdownUnitedStates.click();
+  await page.keyboard.press('Enter');
+
+  // Continue test
+  const searchButton = page.locator('button[type="submit"]', { hasText: 'Find Facilities' });
+  await searchButton.waitFor({ state: 'visible' });
+  await searchButton.click();
+  await expect(page.getByText('United States', { exact: true })).toBeVisible();
+});
+
+
+
