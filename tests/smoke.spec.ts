@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import * as path from 'path';
+import * as fs from 'fs';
+import * as XLSX from 'xlsx';
 
 test.beforeAll(setup);
 
@@ -125,4 +128,90 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     });
     expect(response.status()).toBe(401);
   });
+});
+
+test.describe("OSDEV-1264: Smoke: Download a list of facilities with amount 7000 - 9900 in xlsx.", async () => {
+  test("An unauthorized user cannot download a list of facilities.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(BASE_URL+'/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc'!);
+
+    const title = await page.title();
+    expect(title).toBe("Open Supply Hub");
+    await page.waitForLoadState('networkidle');
+
+    const downloadButton = page.getByRole("button", { name: "Download" });
+    expect(downloadButton).toBeVisible();
+    expect(downloadButton).toBeEnabled();
+    downloadButton.click({ force: true });
+
+    await page.waitForLoadState('networkidle');
+
+    const menuItem = page.getByRole('menuitem', { name: 'Excel' });
+    await expect(menuItem).toBeVisible();
+    menuItem.click({ force: true });
+
+    await expect(page.getByRole('heading', { name: 'Log In To Download' })).toBeVisible();
+    await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
+  })
+
+  test("An Authorized user can download a list of facilities with amount 7000 - 9900 in xlsx.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(BASE_URL+'/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc'!);
+
+    page.getByRole("button", { name: "Download" }).click({ force: true });
+
+    const menuItem = page.getByRole('menuitem', { name: 'Excel' });
+    await expect(menuItem).toBeVisible();
+
+    menuItem.click({ force: true });
+
+    page.getByRole("button", { name: "LOG IN" }).click();
+
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole('textbox', { name: 'Password' }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+
+    page.getByRole("button", { name: "Download" }).click({ force: true });
+    page.getByRole('menuitem', { name: 'Excel' }).click({ force: true });
+
+    const downloadPath = path.resolve(__dirname, 'downloads');
+    const downloadPromise = page.waitForEvent('download');
+
+    const download = await downloadPromise;
+    const filePath = path.join(downloadPath, download.suggestedFilename());
+
+    await download.saveAs(filePath);
+
+    const fileExists = fs.existsSync(filePath);
+    expect(fileExists).toBe(true);
+
+    const fileName = path.basename(filePath);
+    expect(fileName).toContain('facilities');
+    expect(fileName).toContain('.xlsx');
+    const workbook = XLSX.readFile(filePath);
+
+    // Get the first sheet
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    // Convert sheet to JSON rows
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Get count of Facilities output on the  UI
+    const results = page.getByText(/^\d+ results$/);
+    await expect(results).toBeVisible();
+
+    const text = await results.textContent();
+    const numberOfFacilities = parseInt(text?.match(/\d+/)?.[0] || "0", 10);
+    const headerRow = 1;
+
+    expect(rows.length).toEqual(numberOfFacilities + headerRow);
+  })
 });
