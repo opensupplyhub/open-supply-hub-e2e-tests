@@ -130,7 +130,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
   });
 });
 
-test.describe("OSDEV-1264: Smoke: Download a list of facilities with amount 7000 - 9900 in xlsx.", async () => {
+test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 7000 - 9900 in xlsx.", async () => {
   test("An unauthorized user cannot download a list of facilities.", async ({
     page,
   }) => {
@@ -158,7 +158,7 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amount 7000
     await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
   })
 
-  test("An Authorized user can download a list of facilities with amount 7000 - 9900 in xlsx.", async ({
+  test("An authorized user can download a list of facilities with amounts 7000 - 9900 in xlsx.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
