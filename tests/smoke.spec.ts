@@ -152,8 +152,8 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
 
     const nameInput = page.getByLabel("Enter the name for this facility list");
-    await nameInput.fill("DO_NOT_APPROVE test release");
-    await expect(nameInput).toHaveValue("DO_NOT_APPROVE test release");
+    await nameInput.fill("DO NOT APPROVE test release");
+    await expect(nameInput).toHaveValue("DO NOT APPROVE test release");
 
     const descriptionInput = page.getByLabel("Enter a description of this facility list and include a timeframe for the list's validity");
     await descriptionInput.fill("DO NOT APPROVE");
@@ -166,14 +166,25 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 
     await fileInput.setInputFiles(filePath);
     await expect(page.getByText(/DO_NOT_APPROVE test release\.csv/i)).toBeVisible();
-    // const submitButton = page.getByRole('button', { name: /submit/i });
-    // await expect(submitButton).toBeEnabled();
-    // await submitButton.click();
+    const submitButton = page.getByRole('button', { name: /submit/i });
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+    const header =  page.locator("h2", { hasText: "Thank you for submitting your list!" });
+    await expect(header).toBeVisible();
+    const toMainButton = page.getByRole("button", { name: /GO TO THE MAIN PAGE/i });
+    await expect(toMainButton).toBeVisible();
+    const refreshButton = page.getByRole('button', { name: /REFRESH/i });
+    await expect(refreshButton).toBeVisible();
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "My Lists" }).click();
+    await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
   });
 
   // test("Get unauthorized response from `/facilities` endpoint", async ({
   //   request,
   // }) => {
+  // const errorText = "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.";
   //   const response = await get(request, "/api/facilities/", {
   //     authenticate: false,
   //   });
