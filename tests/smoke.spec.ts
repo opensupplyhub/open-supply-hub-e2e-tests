@@ -47,7 +47,7 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   page,
 }) => {
   const { BASE_URL } = process.env;
-  await page.goto(BASE_URL + "/admin/"!);
+  await page.goto(`${BASE_URL}/admin/`!);
 
   // make sure that we are on the login page of Admin Dashboard
   const title = await page.title();
@@ -134,7 +134,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       page,
     }) => {
       const { BASE_URL } = process.env;
-      await page.goto(BASE_URL + "/dashboard/moderation-queue/"!);
+      await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
 
       // make sure that we can not open the Moderation queue page of Dashboard without authorization
       await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
@@ -175,30 +175,27 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
 
         await page.waitForLoadState("networkidle");
 
-        const headers = page.locator("table thead tr th");
-        const headerCount = await headers.count();
-        let statusColIndex = -1;
+        const headers = page.locator('table thead tr th');
+        const headerTexts = await headers.allTextContents();
+        const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
 
-        for (let i = 0; i < headerCount; i++) {
-          const spanText = await headers.nth(i).locator('span[role="button"]').innerText();
-          if (spanText.trim().startsWith(label)) {
-            statusColIndex = i;
-            break;
-          }
+        if (statusColIndex === -1) {
+        throw new Error(`Header with label "${label}" not found`);
         }
-        if (statusColIndex === -1) throw new Error(`${label} column not found`);
+
         const rows = page.locator("table tbody tr");
-        const rowCount = await rows.count();
-        const statuses: string[] = [];
+        const statuses = await Promise.all(
+          (await rows.all()).map(async (row) => {
+            const cell = row.locator("td").nth(statusColIndex);
+            const text = await cell.innerText();
+            return text.trim();
+          })
+        );
 
-        for (let i = 0; i < rowCount; i++) {
-          const cell = rows.nth(i).locator("td").nth(statusColIndex);
-          const text = await cell.innerText();
-          statuses.push(text.trim());
-        }
         const uniqueStatuses = [...new Set(statuses)];
         expect(uniqueStatuses).toEqual([option]);
       }
+
       await checkFilter("#MODERATION_STATUS", "APPROVED","Moderation Status");
       await checkFilter("#DATA_SOURCE", "API", "Source Type");
       await checkFilter("#COUNTRIES", "United States", "Country");
