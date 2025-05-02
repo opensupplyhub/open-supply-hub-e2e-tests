@@ -1,0 +1,4 @@
+country,name,address,sector_product_type,facility_type_processing_type,number_of_workers,parent_company,lat,lng
+Italy,Test 1 TerraCycle Italia SRL,"321 Metro St, 20121 Milan, Italy",,,90,TerraCycle Europe,52.2439207,21.0830365
+Sp'ain,Test 2 VerdeSol Systems SL,"144 Central St, 28001 Madrid, Spain",Solar Panels,Assembly Line,100, VerdeSol Group,53.4135765,153.5223663
+Canada,Test 3  Maple Bioplastics Inc.,"213 Elm St, M5H 2N2 Toronto, Canada",Bioplastics,Manufacturing Facility,1000,Maple           Green Holdings,-41.560246,146.591705

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import path from "path";
 
 test.beforeAll(setup);
 
@@ -125,4 +126,57 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     });
     expect(response.status()).toBe(401);
   });
+});
+
+test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () => {
+  test("Get list of facilities from `/facilities` endpoint", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
+    await page.getByRole("link", { name: "Log in to contribute to Open Supply Hub" }).click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+
+    page.locator('div.nav-item a.button:has-text("Add Data")').click({ force: true });
+    await expect(page.getByRole("heading", { name: "Add production location data to OS Hub" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Upload Multiple Locations" }).click();
+    await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
+
+    const nameInput = page.getByLabel("Enter the name for this facility list");
+    await nameInput.fill("DO_NOT_APPROVE test release");
+    await expect(nameInput).toHaveValue("DO_NOT_APPROVE test release");
+
+    const descriptionInput = page.getByLabel("Enter a description of this facility list and include a timeframe for the list's validity");
+    await descriptionInput.fill("DO NOT APPROVE");
+    await expect(descriptionInput).toHaveValue("DO NOT APPROVE");
+
+    await page.getByRole("button", { name:  /select facility list file/i }).click();
+
+    const fileInput = page.locator("input[type='file']");
+    const filePath = path.resolve(__dirname, "resources/DO_NOT_APPROVE test release.csv");
+
+    await fileInput.setInputFiles(filePath);
+    await expect(page.getByText(/DO_NOT_APPROVE test release\.csv/i)).toBeVisible();
+    // const submitButton = page.getByRole('button', { name: /submit/i });
+    // await expect(submitButton).toBeEnabled();
+    // await submitButton.click();
+  });
+
+  // test("Get unauthorized response from `/facilities` endpoint", async ({
+  //   request,
+  // }) => {
+  //   const response = await get(request, "/api/facilities/", {
+  //     authenticate: false,
+  //   });
+  //   expect(response.status()).toBe(401);
+  // });
 });
