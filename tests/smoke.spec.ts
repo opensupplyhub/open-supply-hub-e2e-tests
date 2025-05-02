@@ -135,24 +135,24 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     page,
   }) => {
     const { BASE_URL } = process.env;
-    await page.goto(BASE_URL+'/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc'!);
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
 
     const title = await page.title();
     expect(title).toBe("Open Supply Hub");
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const downloadButton = page.getByRole("button", { name: "Download" });
     expect(downloadButton).toBeVisible();
     expect(downloadButton).toBeEnabled();
     downloadButton.click({ force: true });
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
-    const menuItem = page.getByRole('menuitem', { name: 'Excel' });
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
     await expect(menuItem).toBeVisible();
     menuItem.click({ force: true });
 
-    await expect(page.getByRole('heading', { name: 'Log In To Download' })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Log In To Download" })).toBeVisible();
     await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
     await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
     await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
@@ -162,11 +162,11 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     page,
   }) => {
     const { BASE_URL } = process.env;
-    await page.goto(BASE_URL+'/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc'!);
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
 
     page.getByRole("button", { name: "Download" }).click({ force: true });
 
-    const menuItem = page.getByRole('menuitem', { name: 'Excel' });
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
     await expect(menuItem).toBeVisible();
 
     menuItem.click({ force: true });
@@ -175,14 +175,14 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
 
     const { USER_EMAIL, USER_PASSWORD } = process.env;
     await page.getByLabel("Email").fill(USER_EMAIL!);
-    await page.getByRole('textbox', { name: 'Password' }).fill(USER_PASSWORD!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
     await page.getByRole("button", { name: "Log In" }).click();
 
     page.getByRole("button", { name: "Download" }).click({ force: true });
-    page.getByRole('menuitem', { name: 'Excel' }).click({ force: true });
+    page.getByRole("menuitem", { name: "Excel" }).click({ force: true });
 
-    const downloadPath = path.resolve(__dirname, 'downloads');
-    const downloadPromise = page.waitForEvent('download');
+    const downloadPath = path.resolve(__dirname, "downloads");
+    const downloadPromise = page.waitForEvent("download");
 
     const download = await downloadPromise;
     const filePath = path.join(downloadPath, download.suggestedFilename());
@@ -193,8 +193,8 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     expect(fileExists).toBe(true);
 
     const fileName = path.basename(filePath);
-    expect(fileName).toContain('facilities');
-    expect(fileName).toContain('.xlsx');
+    expect(fileName).toContain("facilities");
+    expect(fileName).toContain(".xlsx");
     const workbook = XLSX.readFile(filePath);
 
     // Get the first sheet
