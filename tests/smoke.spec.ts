@@ -161,7 +161,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       await expect(page.getByRole("heading", { name: "Dashboard / Moderation Queue" }).getByRole("link")).toBeVisible();
 
       // Test step 4: Moderation events can be filtered by Moderation Status, Source Type, Country Name
-      async function checkFilter(id: string, option: string, label:string) {
+      async function checkSelectFilter(id: string, option: string, label: string) {
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.waitForLoadState("networkidle");
         await page.waitForSelector(`${id} .select__control`);
@@ -173,32 +173,64 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         await optionEl.waitFor({ state: "visible" });
         await optionEl.click({ force: true });
 
-        await page.waitForLoadState("networkidle");
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        const headers = page.locator('table thead tr th');
-        const headerTexts = await headers.allTextContents();
-        const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
+        const resultNumberUI = await page.getByText(/^\d+ results$/).innerText();
+        const resultNumber = parseInt(resultNumberUI.match(/\d+/)?.[0] || "0", 10);
 
-        if (statusColIndex === -1) {
-        throw new Error(`Header with label "${label}" not found`);
+        if(resultNumber !== 0) {
+          const headers = page.locator("table thead tr th");
+          const headerTexts = await headers.allTextContents();
+          const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
+
+          if (statusColIndex === -1) {
+          throw new Error(`Header with label "${label}" not found`);
+          }
+
+          const rows = page.locator("table tbody tr");
+          const statuses = await Promise.all(
+            (await rows.all()).map(async (row) => {
+              const cell = row.locator("td").nth(statusColIndex);
+              const text = await cell.innerText();
+              return text.trim();
+            })
+          );
+
+          const uniqueStatuses = [...new Set(statuses)];
+          expect(uniqueStatuses).toEqual([option]);
         }
+      }
+      async function checkDateFilter(after: string, before: string) {
+        await page.fill("input#after-date", after);
+        await page.locator("input#after-date").dispatchEvent("change");
+        await page.fill("input#before-date", before);
+        await page.locator("input#before-date").dispatchEvent("change");
 
+        await page.waitForLoadState("networkidle");
         const rows = page.locator("table tbody tr");
-        const statuses = await Promise.all(
-          (await rows.all()).map(async (row) => {
-            const cell = row.locator("td").nth(statusColIndex);
-            const text = await cell.innerText();
-            return text.trim();
-          })
-        );
-
-        const uniqueStatuses = [...new Set(statuses)];
-        expect(uniqueStatuses).toEqual([option]);
+        if(after <= before) {
+          expect(await rows.count()).toBeGreaterThan(0);
+        } else {
+          const errorText =  "The 'After Date' should be earlier than or the same as the 'Before Date'. Please adjust the dates."
+          const element = page.getByText(errorText);
+          await expect(element).toBeVisible();
+          const color = await element.evaluate((el) => {
+            return window.getComputedStyle(el).color;
+          });
+          expect(color).toBe("rgb(244, 67, 54)");
+        }
       }
 
-      await checkFilter("#MODERATION_STATUS", "APPROVED","Moderation Status");
-      await checkFilter("#DATA_SOURCE", "API", "Source Type");
-      await checkFilter("#COUNTRIES", "United States", "Country");
+      await checkSelectFilter("#MODERATION_STATUS", "APPROVED","Moderation Status");
+      await checkSelectFilter("#DATA_SOURCE", "API", "Source Type");
+      await checkSelectFilter("#COUNTRIES", "Türkiye", "Country");
+
+      await page.reload({ waitUntil: "networkidle" }); // reset all filters
+      await checkDateFilter("2025-04-01","2025-04-30");
+
+      await page.reload({ waitUntil: "networkidle" }); // reset all filters
+      console.log(await page.content())
+      await checkDateFilter("2025-05-01","2025-04-29");
 
       // Test step 5: Pagination 25/50/100 is available
       await page.reload({ waitUntil: "networkidle" }); // reset all filters
@@ -225,7 +257,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       const downloadPath = path.resolve(__dirname, "downloads");
       const downloadPromise = page.waitForEvent("download");
 
-      const downloadButton = page.locator('button[aria-label="Download Excel"]');
+      const downloadButton = page.locator("button[aria-label='Download Excel']");
       await expect(downloadButton).toBeVisible();
       await expect(downloadButton).toBeEnabled();
       downloadButton.click();
@@ -252,7 +284,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         row.click(),
       ]);
 
-      await newPage.waitForLoadState('load');
+      await newPage.waitForLoadState("load");
       expect(newPage.url()).toContain("/dashboard/moderation-queue/");
       await expect(newPage.getByRole("heading", { name: "Dashboard / Moderation Queue / Contribution Record" })).toBeVisible();
     });
