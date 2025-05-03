@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
+import { get } from "./utils/api";
 
 test.beforeAll(setup);
 
@@ -84,6 +85,47 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   await expect(page.getByText("Log in again")).toBeVisible();
 });
 
+test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an endpoint", () => {
+  test("Get list of facilities from `/facilities` endpoint", async ({
+    request,
+  }) => {
+    const response = await get(request, "/api/facilities/", {
+      authenticate: true,
+      params: {
+        page: 1,
+      },
+    });
+    expect(response.status()).toBe(200);
+    const responseBody = await response.json();
+
+    expect(responseBody).toHaveProperty("type", "FeatureCollection");
+    expect(responseBody).toHaveProperty("count");
+    expect(responseBody).toHaveProperty("features");
+    expect(Array.isArray(responseBody.features)).toBeTruthy();
+
+    const firstFeature = responseBody.features[0];
+    expect(firstFeature).toHaveProperty("id");
+    expect(firstFeature).toHaveProperty("type", "Feature");
+    expect(firstFeature).toHaveProperty("geometry");
+    expect(firstFeature.geometry).toHaveProperty("type", "Point");
+    expect(firstFeature.geometry).toHaveProperty("coordinates");
+    expect(firstFeature).toHaveProperty("properties");
+    expect(firstFeature.properties).toHaveProperty("name");
+    expect(firstFeature.properties).toHaveProperty("address");
+    expect(firstFeature.properties).toHaveProperty("country_code");
+    expect(firstFeature.properties).toHaveProperty("os_id");
+    expect(firstFeature.properties).toHaveProperty("country_name");
+  });
+
+  test("Get unauthorized response from `/facilities` endpoint", async ({
+    request,
+  }) => {
+    const response = await get(request, "/api/facilities/", {
+      authenticate: false,
+    });
+    expect(response.status()).toBe(401);
+  });
+});
 
 test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
