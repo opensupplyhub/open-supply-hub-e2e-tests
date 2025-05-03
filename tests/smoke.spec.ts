@@ -126,3 +126,9 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     expect(response.status()).toBe(401);
   });
 });
+
+test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+  page,
+}) => {
+
+});
