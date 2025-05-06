@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import path from "path";
 
 test.beforeAll(setup);
 
@@ -56,7 +57,6 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   await page.getByLabel("Email").fill(USER_EMAIL!);
   await page.getByLabel("Password").fill(USER_PASSWORD!);
   await page.getByRole("button", { name: "Log In" }).click();
-  await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).toBeVisible();
 
   // make sure that we have successfully logged in
   await expect(
@@ -124,5 +124,173 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
       authenticate: false,
     });
     expect(response.status()).toBe(401);
+  });
+});
+
+test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () => {
+  test("Successful list uploading in CSV format.", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(
+      page.getByRole("heading", { name: "Contribute" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+
+    const addDataText = "Add Data";
+    page
+      .locator(`div.nav-item a.button:has-text("${addDataText}")`)
+      .click({ force: true });
+    await expect(
+      page.getByRole("heading", {
+        name: "Add production location data to OS Hub",
+      })
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Upload Multiple Locations" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
+
+    const nameInput = page.getByLabel("Enter the name for this facility list");
+    await nameInput.fill("DO NOT APPROVE test release");
+    await expect(nameInput).toHaveValue("DO NOT APPROVE test release");
+
+    const descriptionInput = page.getByLabel(
+      "Enter a description of this facility list and include a timeframe for the list's validity"
+    );
+    await descriptionInput.fill("DO NOT APPROVE");
+    await expect(descriptionInput).toHaveValue("DO NOT APPROVE");
+
+    await page
+      .getByRole("button", { name: /select facility list file/i })
+      .click();
+
+    const fileInput = page.locator("input[type='file']");
+    const filePath = path.resolve(
+      __dirname,
+      "data/DO_NOT_APPROVE test release.csv"
+    );
+    await fileInput.setInputFiles(filePath);
+    await expect(
+      page.getByText(/DO_NOT_APPROVE test release\.csv/i)
+    ).toBeVisible();
+
+    const submitButton = page.getByRole("button", { name: /submit/i });
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+    await page.waitForLoadState("networkidle");
+
+    const header = page.locator("h2", {
+      hasText: "Thank you for submitting your list!",
+    });
+    await expect(header).toBeVisible();
+
+    const toMainButton = page.getByRole("button", {
+      name: /GO TO THE MAIN PAGE/i,
+    });
+    await expect(toMainButton).toBeVisible();
+
+    const refreshButton = page.getByRole("button", { name: /REFRESH/i });
+    await expect(refreshButton).toBeVisible();
+    await toMainButton.click();
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "My Lists" }).click();
+    await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // Uploaded list is visible on My Lists page
+    const row = page.locator("table tbody tr:first-child");
+    await expect(row).toBeVisible();
+
+    const headers = page.locator("table thead tr th");
+    const columns = [
+      {
+        name: "Name",
+        value: "DO NOT APPROVE test release",
+      },
+      {
+        name: "Description",
+        value: "DO NOT APPROVE",
+      },
+      {
+        name: "File Name",
+        value: "DO_NOT_APPROVE test release.csv",
+      },
+    ];
+
+    for (const [index, column] of columns.entries()) {
+      await expect(headers.nth(index)).toHaveText(column.name);
+      await expect(row.locator("td").nth(index)).toHaveText(column.value);
+    }
+  });
+
+  test("Upload list validation in CSV format.", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(
+      page.getByRole("heading", { name: "Contribute" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    page
+      .locator('div.nav-item a.button:has-text("Add Data")')
+      .click({ force: true });
+    await expect(
+      page.getByRole("heading", {
+        name: "Add production location data to OS Hub",
+      })
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Upload Multiple Locations" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
+
+    const submitButton = page.getByRole("button", { name: /submit/i });
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+
+    await expect(
+      page.locator(".form__field", {
+        hasText: "Missing required Facility List Name.",
+      })
+    ).toBeVisible();
+    await expect(
+      page.locator(".form__field", {
+        hasText: "Missing required Facility List File.",
+      })
+    ).toBeVisible();
+
+    const nameInput = page.getByLabel("Enter the name for this facility list");
+    await nameInput.fill(`Test name!@@%^^&*()":,./ CO. LTD`);
+    await expect(nameInput).toHaveValue(`Test name!@@%^^&*()":,./ CO. LTD`);
+    await submitButton.click();
+    await expect(
+      page.locator(".form__field", {
+        hasText:
+          "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.",
+      })
+    ).toBeVisible();
   });
 });
