@@ -229,8 +229,8 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(nameInput).toHaveValue(`Test name!@@%^^&*()":,./ CO. LTD`);
     await submitButton.click();
     await expect(page.locator(
-      ".form__field",
-      { hasText: "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed." }
-    )).toBeVisible();
-  });
+        ".form__field",
+        { hasText: "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed." }
+      )).toBeVisible();
+    });
 });
