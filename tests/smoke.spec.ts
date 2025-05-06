@@ -151,12 +151,18 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
     page.getByRole("link", { name: "Open Supply Hub Admin" })
   ).toBeVisible();
   await expect(page.getByText("Select contributor to change")).toBeVisible();
-  const searchInput = page.getByRole('textbox', { name: 'Search' });
+  const searchInput = page.getByRole("textbox", { name: "Search" });
   await searchInput.fill(USER_ADMIN_EMAIL!);
   await page.getByRole("button", { name: "Search" }).click();
   await page.reload({ waitUntil: "networkidle" });
-  console.log(await page.content())
 
-  // const firstRow = page.locator('tbody tr').first();
-  // firstRow.locator('th a').click()
+  const firstRowLink = page.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
+  await firstRowLink.click();
+  await page.reload({ waitUntil: "networkidle" });
+
+  await expect(page.getByText("Change contributor")).toBeVisible();
+  const adminInput = page.locator("#id_admin");
+  expect(await adminInput.locator("option:checked").textContent()).toBe(USER_ADMIN_EMAIL);
+
+
 });
