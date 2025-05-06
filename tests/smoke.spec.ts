@@ -229,7 +229,6 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       await checkDateFilter("2025-04-01","2025-04-30");
 
       await page.reload({ waitUntil: "networkidle" }); // reset all filters
-      console.log(await page.content())
       await checkDateFilter("2025-05-01","2025-04-29");
 
       // Test step 5: Pagination 25/50/100 is available
