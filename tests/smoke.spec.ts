@@ -129,7 +129,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
 });
 
 test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () => {
-  test("Get list of facilities from `/facilities` endpoint", async ({
+  test("Successful list uploading in CSV format.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -175,19 +175,62 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(toMainButton).toBeVisible();
     const refreshButton = page.getByRole('button', { name: /REFRESH/i });
     await expect(refreshButton).toBeVisible();
+    toMainButton.click();
 
     await page.getByRole("button", { name: "My Account" }).click();
     await page.getByRole("link", { name: "My Lists" }).click();
     await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // Uploaded list is visible on My Lists page
+    const headers = page.locator("table thead tr th");
+    const columnNames =["Name","Description", "File Name"];
+    const values =["DO NOT APPROVE test release", "DO NOT APPROVE", "DO_NOT_APPROVE test release.csv"];
+    const row = page.locator("table tbody tr:first-child");
+    await expect(row).toBeVisible();
+
+    for (let i = 0; i < columnNames.length; i++) {
+      await expect(headers.nth(i)).toHaveText(columnNames[i]);
+      await expect(row.locator("td").nth(i)).toHaveText(values[i]);
+    }
   });
 
-  // test("Get unauthorized response from `/facilities` endpoint", async ({
-  //   request,
-  // }) => {
-  // const errorText = "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.";
-  //   const response = await get(request, "/api/facilities/", {
-  //     authenticate: false,
-  //   });
-  //   expect(response.status()).toBe(401);
-  // });
+  test("Upload list validation in CSV format.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(page.getByRole("heading", { name: "Contribute" })).toBeVisible();
+    await page.getByRole("link", { name: "Log in to contribute to Open Supply Hub" }).click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+
+    page.locator('div.nav-item a.button:has-text("Add Data")').click({ force: true });
+    await expect(page.getByRole("heading", { name: "Add production location data to OS Hub" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Upload Multiple Locations" }).click();
+    await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
+
+    const submitButton = page.getByRole('button', { name: /submit/i });
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+
+    await expect(page.locator(".form__field", { hasText: "Missing required Facility List Name." })).toBeVisible();
+    await expect(page.locator(".form__field", { hasText: "Missing required Facility List File." })).toBeVisible();
+
+    const nameInput = page.getByLabel("Enter the name for this facility list");
+    await nameInput.fill(`Test name!@@%^^&*()":,./ CO. LTD`);
+    await expect(nameInput).toHaveValue(`Test name!@@%^^&*()":,./ CO. LTD`);
+    await submitButton.click();
+    await expect(page.locator(
+      ".form__field",
+      { hasText: "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed." }
+    )).toBeVisible();
+  });
 });
