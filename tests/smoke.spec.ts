@@ -126,3 +126,37 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     expect(response.status()).toBe(401);
   });
 });
+
+test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async ({
+  page,
+}) => {
+  // 1. Check your user in the admin panel
+  const { BASE_URL } = process.env;
+  await page.goto(`${BASE_URL}/admin/api/contributor/`!);
+
+  // make sure that we are on the login page of Admin Dashboard
+  const title = await page.title();
+  expect(title).toBe("Log in | Django site admin");
+  await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
+
+  // fill in login credentials
+  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await page.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
+  await page.getByRole("button", { name: "Log In" }).click();
+  await expect(page.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)).toBeVisible();
+
+  // make sure that we have successfully logged in
+  await expect(
+    page.getByRole("link", { name: "Open Supply Hub Admin" })
+  ).toBeVisible();
+  await expect(page.getByText("Select contributor to change")).toBeVisible();
+  const searchInput = page.getByRole('textbox', { name: 'Search' });
+  await searchInput.fill(USER_ADMIN_EMAIL!);
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.reload({ waitUntil: "networkidle" });
+  console.log(await page.content())
+
+  // const firstRow = page.locator('tbody tr').first();
+  // firstRow.locator('th a').click()
+});
