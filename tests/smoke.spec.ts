@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import * as path from "path";
+import * as fs from "fs";
+
 
 test.beforeAll(setup);
 
@@ -44,7 +47,7 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   page,
 }) => {
   const { BASE_URL } = process.env;
-  await page.goto(BASE_URL + "/admin/"!);
+  await page.goto(`${BASE_URL}/admin/`!);
 
   // make sure that we are on the login page of Admin Dashboard
   const title = await page.title();
@@ -125,4 +128,188 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     });
     expect(response.status()).toBe(401);
   });
+});
+test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager.", () => {
+    test("A moderator is able to work with the Moderation Queue page.", async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+      await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+
+      // make sure that we can not open the Moderation queue page of Dashboard without authorization
+      await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+      await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
+      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+      // Test step 1: Only Moderator has access
+      // fill in login credentials
+      const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+      await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+      await page.getByRole("textbox", { name: "Password" }).fill(USER_ADMIN_PASSWORD!);
+      await page.getByRole("button", { name: "Log In" }).click();
+
+      // make sure that we are on the Moderation queue page of Dashboard
+      await page.getByRole("button", { name: "My Account" }).click();
+      await page.getByRole("link", { name: "Dashboard" }).click();
+      await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+
+      // Test step 2: Moderation Queue link is available in the Dashboard
+      const moderationQueueLink = page.getByRole("link", { name: "Moderation Queue" });
+      await expect(moderationQueueLink).toBeVisible();
+
+      // Test step 3: Moderation Queue page is opened successfully
+      await moderationQueueLink.click();
+      await expect(page.getByRole("heading", { name: "Dashboard / Moderation Queue" }).getByRole("link")).toBeVisible();
+
+      // Test step 4: Moderation events can be filtered by Moderation Status, Source Type, Country Name
+      async function checkSelectFilter(id: string, option: string, label: string) {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForLoadState("networkidle");
+        await page.waitForSelector(`${id} .select__control`);
+        const selectLocator = page.locator(`${id} .select__control`);
+
+        await selectLocator.waitFor({ state: "visible" });
+        await selectLocator.click({ force: true });
+        const optionEl = page.locator(".select__option", { hasText: new RegExp(`^${option}$`) })
+        await optionEl.waitFor({ state: "visible" });
+        await optionEl.click({ force: true });
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const resultNumberUI = await page.getByText(/^\d+ results$/).innerText();
+        const resultNumber = parseInt(resultNumberUI.match(/\d+/)?.[0] || "0", 10);
+
+        if(resultNumber !== 0) {
+          const headers = page.locator("table thead tr th");
+          const headerTexts = await headers.allTextContents();
+          const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
+
+          if (statusColIndex === -1) {
+          throw new Error(`Header with label "${label}" not found`);
+          }
+
+          const rows = page.locator("table tbody tr");
+          const statuses = await Promise.all(
+            (await rows.all()).map(async (row) => {
+              const cell = row.locator("td").nth(statusColIndex);
+              const text = await cell.innerText();
+              return text.trim();
+            })
+          );
+
+          const uniqueStatuses = [...new Set(statuses)];
+          expect(uniqueStatuses).toEqual([option]);
+        }
+      }
+      async function checkDateFilter(after: string, before: string) {
+        await page.fill("input#after-date", after);
+        await page.locator("input#after-date").dispatchEvent("change");
+        await page.fill("input#before-date", before);
+        await page.locator("input#before-date").dispatchEvent("change");
+
+        await page.waitForLoadState("networkidle");
+        const rows = page.locator("table tbody tr");
+        if(after <= before) {
+          expect(await rows.count()).toBeGreaterThan(0);
+        } else {
+          const errorText =  "The 'After Date' should be earlier than or the same as the 'Before Date'. Please adjust the dates."
+          const element = page.getByText(errorText);
+          await expect(element).toBeVisible();
+          const color = await element.evaluate((el) => {
+            return window.getComputedStyle(el).color;
+          });
+          expect(color).toBe("rgb(244, 67, 54)");
+        }
+      }
+
+      await checkSelectFilter("#MODERATION_STATUS", "APPROVED","Moderation Status");
+      await checkSelectFilter("#DATA_SOURCE", "API", "Source Type");
+      await checkSelectFilter("#COUNTRIES", "Türkiye", "Country");
+
+      await page.reload({ waitUntil: "networkidle" }); // reset all filters
+      await checkDateFilter("2025-04-01","2025-04-30");
+
+      await page.reload({ waitUntil: "networkidle" }); // reset all filters
+      await checkDateFilter("2025-05-01","2025-04-29");
+
+      // Test step 5: Pagination 25/50/100 is available
+      await page.reload({ waitUntil: "networkidle" }); // reset all filters
+      // Check default settings for page
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.getByRole("button", { name: "25" }).waitFor({ state: "visible" });
+      await expect(page.locator("table tbody tr")).toHaveCount(25);
+      // Set 50 items per page
+      await page.getByRole("button", { name: "25" }).click();
+      await page.locator("li", { hasText: "50" }).waitFor({ state: "visible" });
+      await page.locator("li", { hasText: "50" }).click();
+      await page.waitForLoadState("networkidle");
+
+      await expect(page.locator("table tbody tr")).toHaveCount(50);
+      // Set 50 items per page
+      await page.getByRole("button", { name: "50" }).click();
+      await page.locator("li", { hasText: "100" }).waitFor({ state: "visible" });
+      await page.locator("li", { hasText: "100" }).click();
+      await page.waitForLoadState("networkidle");
+
+      await expect(page.locator("table tbody tr")).toHaveCount(100);
+
+      // Test step 6: A Data Moderator can download data from active page
+      const downloadPath = path.resolve(__dirname, "downloads");
+      const downloadPromise = page.waitForEvent("download");
+
+      const downloadButton = page.locator("button[aria-label='Download Excel']");
+      await expect(downloadButton).toBeVisible();
+      await expect(downloadButton).toBeEnabled();
+      downloadButton.click();
+
+      const download = await downloadPromise;
+      const filePath = path.join(downloadPath, download.suggestedFilename());
+
+      await download.saveAs(filePath);
+
+      const fileExists = fs.existsSync(filePath);
+      expect(fileExists).toBe(true);
+
+      const fileName = path.basename(filePath);
+      expect(fileName).toBe("moderation_events.xlsx");
+
+      // Test step 7: Moderation events can be opened
+      const row = page.locator("table tbody tr:first-child");
+
+      await expect(row).toBeVisible();
+      await expect(row).toBeEnabled();
+
+      const [newPage] = await Promise.all([
+        page.context().waitForEvent("page"),
+        row.click(),
+      ]);
+
+      await newPage.waitForLoadState("load");
+      expect(newPage.url()).toContain("/dashboard/moderation-queue/");
+      await expect(newPage.getByRole("heading", { name: "Dashboard / Moderation Queue / Contribution Record" })).toBeVisible();
+    });
+
+    test("A regular user does not have an access to the Moderation Queue page.", async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+      await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+
+      // make sure that we can not open the Moderation queue page of Dashboard without authorization
+      await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+      await page.getByRole("link", { name: "Sign in to view your Open Supply Hub Dashboard" }).click();
+      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+      // fill in login with regular user credentials
+      const { USER_EMAIL, USER_PASSWORD } = process.env;
+      await page.getByLabel("Email").fill(USER_EMAIL!);
+      await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+      await page.getByRole("button", { name: "Log In" }).click();
+      await page.waitForLoadState("networkidle");
+
+      await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+      await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Dashboard / Moderation Queue" }).getByRole("link")
+      ).not.toBeVisible();
+    });
 });
