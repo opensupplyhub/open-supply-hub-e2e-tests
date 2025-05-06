@@ -177,7 +177,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     const fileInput = page.locator("input[type='file']");
     const filePath = path.resolve(
       __dirname,
-      "resources/DO_NOT_APPROVE test release.csv"
+      "data/DO_NOT_APPROVE test release.csv"
     );
     await fileInput.setInputFiles(filePath);
     await expect(
