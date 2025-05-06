@@ -164,5 +164,16 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   const adminInput = page.locator("#id_admin");
   expect(await adminInput.locator("option:checked").textContent()).toBe(USER_ADMIN_EMAIL);
 
+  // 2. Delete Embed config and Embed level
+  const embedConfigInput = page.locator("#id_embed_config");
+  const embedLevelInput = page.locator("#id_embed_level");
+
+
+  await embedConfigInput.selectOption('');
+  await embedLevelInput.selectOption('');
+  expect(await embedConfigInput.locator("option:checked").textContent()).toBe("---------");
+  expect(await embedLevelInput.locator("option:checked").textContent()).toBe("---------");
+
+
 
 });
