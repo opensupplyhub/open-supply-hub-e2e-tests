@@ -295,3 +295,5 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
   });
 });
+
+test.describe("OSDEV-1275: Playwright tests - (prod-only) EM user can... See EM working properly at their websites", () => {});
