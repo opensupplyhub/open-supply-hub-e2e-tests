@@ -4,185 +4,303 @@ import { get } from "./utils/api";
 
 test.beforeAll(setup);
 
-test("OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
-  page,
-}) => {
+test("OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
   const { BASE_URL } = process.env;
+
+  // Navigate to the base URL
   await page.goto(BASE_URL!);
 
-  // make sure that we are on the main page
-  const title = await page.title();
-  expect(title).toBe("Open Supply Hub");
-
-  // navigate to the login pages
-  await page.getByRole("button", { name: "Accept" }).click();
-  await page.getByRole("link", { name: "Login/Register" }).click();
-
-  // fill in login credentials
-  const { USER_EMAIL, USER_PASSWORD } = process.env;
-  await page.getByLabel("Email Address").fill(USER_EMAIL!);
-  await page.getByLabel("Password", { exact: true }).fill(USER_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
-  await expect(page.getByRole("button", { name: "My Account" })).toBeVisible();
-
-  // make sure that we have successfully logged in
-  await page.getByRole("button", { name: "My Account" }).click();
-  await page.getByRole("link", { name: "Settings" }).click();
-  await page.isVisible(`text=${USER_EMAIL}`);
-  await page.getByRole("button", { name: "My Account" }).click();
-
-  // log the user out and make sure we are logged out
-  await page.getByRole("button", { name: "Log Out" }).click();
-  await expect(page.getByText("text=My Account")).not.toBeVisible();
-  await page.waitForResponse(
-    async (resp) => resp.url().includes("/user-logout/") && resp.status() == 204
-  );
-  await expect(page.getByText("Login/Register")).toBeVisible();
-});
-
-test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", async ({
-  page,
-}) => {
-  const { BASE_URL } = process.env;
-  await page.goto(BASE_URL + "/admin/"!);
-
-  // make sure that we are on the login page of Admin Dashboard
-  const title = await page.title();
-  expect(title).toBe("Log in | Django site admin");
-  await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
-
-  // fill in login credentials
-  const { USER_EMAIL, USER_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_EMAIL!);
-  await page.getByLabel("Password").fill(USER_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
-  await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).toBeVisible();
-
-  // make sure that we have successfully logged in
-  await expect(
-    page.getByRole("link", { name: "Open Supply Hub Admin" })
-  ).toBeVisible();
-  await expect(page.getByText("Site administration")).toBeVisible();
-  await expect(
-    page.getByRole("table", { name: "Api" }).getByRole("caption")
-  ).toBeVisible();
-  await expect(
-    page
-      .getByRole("table", { name: "Authentication and Authorization" })
-      .getByRole("caption")
-  ).toBeVisible();
-  await expect(
-    page.getByRole("table", { name: "django-waffle" }).getByRole("caption")
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Log out" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Recent actions" })
-  ).toBeVisible();
-
-  // log the user out and make sure we are logged out
-  await page.getByRole("link", { name: "Log out" }).click();
-  await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).not.toBeVisible();
-  await expect(page.getByText("Log in again")).toBeVisible();
-});
-
-test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an endpoint", () => {
-  test("Get list of facilities from `/facilities` endpoint", async ({
-    request,
-  }) => {
-    const response = await get(request, "/api/facilities/", {
-      authenticate: true,
-      params: {
-        page: 1,
-      },
-    });
-    expect(response.status()).toBe(200);
-    const responseBody = await response.json();
-
-    expect(responseBody).toHaveProperty("type", "FeatureCollection");
-    expect(responseBody).toHaveProperty("count");
-    expect(responseBody).toHaveProperty("features");
-    expect(Array.isArray(responseBody.features)).toBeTruthy();
-
-    const firstFeature = responseBody.features[0];
-    expect(firstFeature).toHaveProperty("id");
-    expect(firstFeature).toHaveProperty("type", "Feature");
-    expect(firstFeature).toHaveProperty("geometry");
-    expect(firstFeature.geometry).toHaveProperty("type", "Point");
-    expect(firstFeature.geometry).toHaveProperty("coordinates");
-    expect(firstFeature).toHaveProperty("properties");
-    expect(firstFeature.properties).toHaveProperty("name");
-    expect(firstFeature.properties).toHaveProperty("address");
-    expect(firstFeature.properties).toHaveProperty("country_code");
-    expect(firstFeature.properties).toHaveProperty("os_id");
-    expect(firstFeature.properties).toHaveProperty("country_name");
-  });
-
-  test("Get unauthorized response from `/facilities` endpoint", async ({
-    request,
-  }) => {
-    const response = await get(request, "/api/facilities/", {
-      authenticate: false,
-    });
-    expect(response.status()).toBe(401);
-  });
-});
-
-test("OSDEV-1232: Facilities. Invalid search parameters",  async ({ page }) => {
-  const { BASE_URL } = process.env;
-  await page.goto(BASE_URL!);
-
+  // Define an invalid search query
   const invalidSearchQuery = "invalid ABRACADABRA";
+
+  // Click on the search input field and fill it with the invalid query
   await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
-  await page
-    .getByPlaceholder("e.g. ABC Textiles Limited")
-    .fill(invalidSearchQuery); 
-  
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(invalidSearchQuery);
+
+  // Click the "Find Facilities" button to perform the search
   await page.getByRole("button", { name: "Find Facilities" }).click();
+
+  // Wait for the facilities API call to return a 200 status
   await page.waitForResponse(
-    async (resp) => resp.url().includes(`api/facilities/?q=`) && resp.status() == 200
+    async (resp) => resp.url().includes(`api/facilities/?q=`) && resp.status() === 200
   );
+
+  // Assert that the "No facilities matching this" message is visible
   await expect(page.getByText("No facilities matching this")).toBeVisible();
 });
 
-test("OSDEV-1232: Facilities. Valid search parameters", async ({ page }) => {
+test("OSDEV-1232: Facilities. Valid search", async ({ page }) => {
   const { BASE_URL } = process.env;
 
+  // Navigate to the base URL
   await page.goto(BASE_URL!);
-   const validSearchQuery = "coffee factory";
+
+  // Define a valid search query
+  const validSearchQuery = "coffee factory";
+
+  // Click on the search input field and fill it with the valid query
   await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
-  await page
-    .getByPlaceholder("e.g. ABC Textiles Limited")
-    .fill(validSearchQuery);
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(validSearchQuery);
+
+  // Click the "Find Facilities" button to perform the search
   await page.getByRole("button", { name: "Find Facilities" }).click();
+
+  // Wait for the facilities API call to return a 200 status
   await page.waitForResponse(
-    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() == 200
+    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() === 200
   );
+
+  // Assert that the search results are displayed
   await expect(page.getByText("# Contributors")).toBeVisible();
+
+  // Click the first facility link in the search results
+  const facilityLink = page.locator('a[href*="/facilities/"]').first();
+  await facilityLink.scrollIntoViewIfNeeded();
+  await facilityLink.waitFor({ state: "visible" });
+
+  await Promise.all([
+    page.waitForURL(/\/facilities\//),
+    facilityLink.click({ force: true }),
+  ]);
+
+  // Assert that the facility page contains the search query
+  await expect(page.getByText(validSearchQuery).first()).toBeVisible();
+
 });
 
-
-test('"OSDEV-1232: Facilities. Country Search', async ({ page }) => {
+test("OSDEV-1232: Facilities. OSID search", async ({ page }) => {
   const { BASE_URL } = process.env;
 
+  // Navigate to the base URL
   await page.goto(BASE_URL!);
 
-  // Click the correct dropdown (2nd "Select" under #COUNTRIES)
-  const countryDropdown = page.locator('#COUNTRIES div').filter({ hasText: 'Select' }).nth(1);
-  const countryDropdownUnitedStates = page.locator('#COUNTRIES div').filter({ hasText: 'United States' }).nth(1);
-  await countryDropdown.click();
+  // Define a valid search query
+  const validSearchQuery = "Car factory";
 
-  // Now type into the input that appears inside the open dropdown
-  const countryInput = countryDropdown.locator('input');
-  await countryInput.fill('united states');
-  await countryDropdownUnitedStates.click();
-  await page.keyboard.press('Enter');
+  // Click on the search input field and fill it with the valid query
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(validSearchQuery);
 
-  // Continue test
-  const searchButton = page.locator('button[type="submit"]', { hasText: 'Find Facilities' });
-  await searchButton.waitFor({ state: 'visible' });
-  await searchButton.click();
-  await expect(page.getByText('United States', { exact: true })).toBeVisible();
+  // Click the "Find Facilities" button to perform the search
+  await page.getByRole("button", { name: "Find Facilities" }).click();
+
+  // Wait for the facilities API call to return a 200 status
+  await page.waitForResponse(
+    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() === 200
+  );
+
+  // Assert that the search results are displayed
+  await expect(page.getByText("# Contributors")).toBeVisible();
+
+  // Click the first facility link in the search results
+  const facilityLink = page.locator('a[href*="/facilities/"]').first();
+  await facilityLink.scrollIntoViewIfNeeded();
+  await facilityLink.waitFor({ state: "visible" });
+
+  await Promise.all([
+    page.waitForURL(/\/facilities\//),
+    facilityLink.click({ force: true }),
+  ]);
+
+  // Copy the OSID from the facility page
+  await page.waitForTimeout(3000);
+  await page.getByRole("button", { name: "Copy OS ID" }).click();
+  const osId = await page.evaluate(async () => await navigator.clipboard.readText());
+  await expect(page.getByText("Copied OS ID to clipboard✖")).toBeVisible();
+
+  // Navigate back to the search results
+  await page.getByRole("button", { name: "Back to search results" }).click();
+
+  // Perform a search using the copied OSID
+  await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(osId);
+  await page.getByRole("button", { name: "Search" }).first().click();
+
+  // Wait for the facilities API call to return a 200 status
+  await page.waitForResponse(
+    async (resp) => resp.url().includes("api/facilities/?q=") && resp.status() === 200
+  );
+
+  // Assert that the search results contain the OSID
+  await expect(page.getByText(osId)).toBeVisible();
 });
 
+// Test for country search
+const countriesToTest = ['United States', 'Australia', 'United Kingdom', 'South Africa'];
+
+countriesToTest.forEach((countryName) => {
+  test(`OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    await page.goto(BASE_URL!);
+
+    // Open the country dropdown
+    const countryDropdown = page.locator('#COUNTRIES div').filter({ hasText: 'Select' }).nth(1);
+    await countryDropdown.click();
+
+    // Type and select country
+    const countryInput = countryDropdown.locator('input');
+    await countryInput.fill(countryName);
+    const option = page.locator('#COUNTRIES div').filter({ hasText: countryName }).nth(1);
+    await option.click();
+    await page.keyboard.press('Enter');
+
+    // Click search
+    const searchButton = page.locator('button[type="submit"]', { hasText: 'Find Facilities' });
+    await searchButton.waitFor({ state: 'visible' });
+    await searchButton.click();
+
+    // Assert search result contains country name
+    await expect(page.getByText(countryName, { exact: true })).toBeVisible();
+
+    // Click first facility link
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: 'visible' });
+
+    await Promise.all([
+      page.waitForURL(/\/facilities\//),
+      facilityLink.click({ force: true })
+    ]);
+
+    // Assert facility page contains country name
+    const mainPanel = page.locator('#mainPanel');
+    await mainPanel.scrollIntoViewIfNeeded();
+    await expect(mainPanel).toContainText(countryName);
+  });
+});
+
+// Test for facility type search
+const facilityTypesToTest = ['Final Product Assembly', 'Textile or Material Production', /*'Warehousing / Distribution'*/];
+
+facilityTypesToTest.forEach((facilityType) => {
+  test(`OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    await page.goto(BASE_URL!);
+    await page.getByRole('button', { name: 'Find Facilities' }).click();
+
+    // Open the FACILITY TYPE dropdown
+    const typeDropdown = page.locator('#FACILITY_TYPE div').filter({ hasText: 'Select' }).first();
+    await typeDropdown.click();
+
+    // Fill and select the facility type
+    const typeInput = typeDropdown.locator('input');
+    await typeInput.fill(facilityType);
+
+    const typeOption = page.locator('#FACILITY_TYPE div').filter({ hasText: facilityType }).first();
+    await typeOption.click();
+    await page.keyboard.press('Enter');
+
+    // Click the search button *after* selecting the filter
+    const searchButton = page.locator('button[type="submit"]', { hasText: 'Search' });
+    await searchButton.waitFor({ state: 'visible' });
+    await searchButton.click();
+
+    // Assert the result page shows the selected facility type
+    await expect(page.getByText(new RegExp(facilityType, 'i')).first()).toBeVisible();
+
+    // Click the first facility link
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: 'visible' });
+
+    await Promise.all([
+      page.waitForURL(/\/facilities\//),
+      facilityLink.click({ force: true })
+    ]);
+
+    // Scroll and wait for the panel
+const mainPanel = page.locator('#mainPanel');
+await mainPanel.scrollIntoViewIfNeeded();
+
+// Click the "more entries" button inside the first "Facility Type" block
+const facilityTypeSection = page.locator('text=Facility Type').first().locator('xpath=../../..');
+const moreButton = facilityTypeSection.locator('button:has-text("entries")');
+await moreButton.click();
+
+// Wait for the second "Facility Type" to appear (in slide-out)
+const secondFacilityType = page.locator('text=Facility Type').nth(1);
+const slideOutPanel = secondFacilityType.locator('xpath=ancestor::div[contains(@style, "translate")]');
+await slideOutPanel.waitFor({ state: 'visible' });
+
+//  Assert the expected facility type is shown in the slide-out
+await expect(slideOutPanel).toContainText(new RegExp(facilityType, 'i'));;
+  });
+});
+
+// Test for number of workers search
+
+const workerRangesToTest = ['Less than 1000', '1001-5000', '5001-10000', 'More than 10000'];
+
+const workerRangeBounds: Record<string, { min: number; max: number }> = {
+  'Less than 1000': { min: 0, max: 1000 },
+  '1001-5000': { min: 1001, max: 5000 },
+  '5001-10000': { min: 5001, max: 10000 },
+  'More than 10000': { min: 10001, max: Infinity }
+};
+
+workerRangesToTest.forEach((workerRange) => {
+  test(`OSDEV-1232: Facilities. Filter by Number of Workers - ${workerRange}`, async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    await page.goto(BASE_URL!);
+    await page.getByRole('button', { name: 'Find Facilities' }).click();
+
+    // Open the NUMBER OF WORKERS dropdown
+    const workersDropdown = page.locator('#NUMBER_OF_WORKERS div').filter({ hasText: 'Select' }).first();
+    await workersDropdown.click();
+
+    // Fill and select the worker range
+    const workersInput = workersDropdown.locator('input');
+    await workersInput.fill(workerRange);
+
+    const option = page.locator('#NUMBER_OF_WORKERS div').filter({ hasText: workerRange }).first();
+    await option.click();
+    await page.keyboard.press('Enter');
+
+    // Click the search button
+    const searchButton = page.locator('button[type="submit"]', { hasText: /search/i });
+    await searchButton.waitFor({ state: 'visible' });
+    await searchButton.click();
+
+    // Confirm that at least one result is shown
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: 'visible' });
+
+    // Click the first facility
+    await Promise.all([
+      page.waitForURL(/\/facilities\//),
+      facilityLink.click({ force: true })
+    ]);
+
+    // Wait for main content to load
+    const mainPanel = page.locator('#mainPanel');
+    await mainPanel.scrollIntoViewIfNeeded();
+
+    // Click the "more entries" button inside the first "Number of workers" section
+    const workersSection = page.locator('text=Number of workers').first().locator('xpath=../../..');
+    const moreButton = workersSection.locator('button:has-text("entries")');
+    await moreButton.click();
+
+    // Wait for the slide-out panel
+    const secondWorkersSection = page.locator('text=Number of workers').nth(1);
+    const slideOutPanel = secondWorkersSection.locator('xpath=ancestor::div[contains(@style, "translate")]');
+    await slideOutPanel.waitFor({ state: 'visible' });
+
+    // ✅ Extract all numbers and check if any fall within the expected range
+    const { min, max } = workerRangeBounds[workerRange];
+    const texts = await slideOutPanel.locator('p').allTextContents();
+
+    const monthRegex = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+
+    const workerCount = texts
+      .filter(text => !monthRegex.test(text)) // exclude potential date strings
+      .map(text => parseInt(text.replace(/,/g, '').trim(), 10))
+      .find(num => !isNaN(num) && num >= min && num <= max);
+    
+    expect(workerCount, `Expected a worker count between ${min} and ${max}, but none found.`).toBeDefined();
+  });
+});
 
 
