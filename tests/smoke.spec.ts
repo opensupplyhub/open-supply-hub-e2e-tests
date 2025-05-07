@@ -409,17 +409,95 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   const checkbox = settingsPage.locator('label:has-text("100%") input[type="checkbox"]');
   await checkbox.waitFor({ state: 'visible' });
   await checkbox.scrollIntoViewIfNeeded();
-
   await expect(checkbox).not.toBeChecked();
-  settingsPage.on('response', async response => {
-    if (response.url().includes('/api/embed-configs/')) {
-      console.log(`🎯 [${response.status()}] ${response.url()}`);
-      const json = await response.json();
-      console.log(json);
-    }
+  await checkbox.check({ force: true });
+  const cookies = await settingsPage.context().cookies();
+  const csrfCookie = cookies.find(c => c.name === 'csrftoken');
+  const csrfToken = csrfCookie?.value;
+  console.log('!!!', csrfToken)
+  await settingsPage.request.post('https://test.os-hub.net/api/embed-configs/', {
+    headers: {
+      'Referer': 'https://test.os-hub.net/settings/',
+      'X-CSRFToken': csrfToken!,
+      'Content-Type': 'application/json',
+    },
+    data: {
+      "width": "100%",
+      "height": 75,
+      "color": "#3d2f8c",
+      "font": "'Darker Grotesque',sans-serif",
+      "prefer_contributor_name": false,
+      "text_search_label": "Facility Name or OS ID",
+      "map_style": "default",
+      "hide_sector_data": false,
+      "fullWidth": true,
+      "preferContributorName": false,
+      "textSearchLabel": "Facility Name or OS ID",
+      "mapStyle": "default",
+      "hideSectorData": false,
+      "embed_fields": [
+          {
+              "visible": false,
+              "order": 0,
+              "display_name": "",
+              "column_name": ""
+          },
+          {
+              "visible": false,
+              "order": 1,
+              "display_name": "facility_type_processing_type",
+              "column_name": "facility_type_processing_type"
+          },
+          {
+              "visible": true,
+              "order": 2,
+              "display_name": "Number of Workers",
+              "column_name": "number_of_workers"
+          },
+          {
+              "visible": false,
+              "order": 3,
+              "display_name": "sector_product_type",
+              "column_name": "sector_product_type"
+          },
+          {
+              "visible": true,
+              "order": 4,
+              "display_name": "Processing Type",
+              "column_name": "processing_type"
+          },
+          {
+              "visible": true,
+              "order": 5,
+              "display_name": "Product Type",
+              "column_name": "product_type"
+          },
+          {
+              "visible": true,
+              "order": 6,
+              "display_name": "Facility Type",
+              "column_name": "facility_type"
+          },
+          {
+              "visible": true,
+              "order": 7,
+              "display_name": "Parent Company",
+              "column_name": "parent_company"
+          }
+      ]
+  },
+  });
+  await settingsPage.route('**api/embed-configs/', async (route, request) => {
+    console.log(request.headers());
+    route.continue();
   });
 
-  await checkbox.check({ force: true });
+  settingsPage.on('response', res => {
+    if(res.url().includes("/api/embed-configs/")) {
+      console.log(`🎯 [${res.status()}] ${res.url()}`);
+      console.log( res.text());
+    }
+   })
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
 
