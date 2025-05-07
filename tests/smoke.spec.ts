@@ -368,7 +368,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   ).toHaveText(/Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab./);
   await expect(settingsPage.getByRole("link", { name: "OS Hub Embedded Map" })).toBeVisible();
 
-  // 4. Return back to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
+  // 4. Return to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
   await firstRowLink.click();
   await adminPage.waitForLoadState("networkidle");
 
@@ -383,7 +383,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await expect(adminPage.getByText("The contributor")).toBeVisible();
   await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
 
-  // 5. User should see the form with settings for embedded map
+  // 5. The user should see the form with settings for the embedded map
   await settingsPage.reload({ waitUntil: "networkidle" });
   await settingsPage.locator("button:has-text('Embed')").click();
   await settingsPage.waitForLoadState("networkidle");
@@ -524,7 +524,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   // const map = settingsPage.locator('#oar-leaflet-map');
   // await expect(map).toBeVisible();
   // await expect(settingsPage.locator('.leaflet-tile-loaded')).toHaveCount(1);
-  // // 7. Check in the admin panel whether Embed config is filled in.
+  // // 7. Check in the admin panel whether the Embed config is filled in
   // await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
   // await adminPage.waitForLoadState("networkidle");
   // expect(await adminPage.locator("#id_embed_config").locator("option:checked").textContent()).toBe("EmbedConfig 113, Size: 100% x 75");
