@@ -303,4 +303,101 @@ workerRangesToTest.forEach((workerRange) => {
   });
 });
 
+const testCases = [
+  {
+    country: 'United States',
+    facilityType: 'Final Product Assembly',
+    workerRange: 'Less than 1000'
+  },
+  {
+    country: 'United States',
+    facilityType: 'Textile or Material Production',
+    workerRange: 'Less than 1000'
+  }
+];
 
+testCases.forEach(({ country, facilityType, workerRange }) => {
+  test(`OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange}`, async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    await page.goto(BASE_URL!);
+    await page.getByRole('button', { name: 'Find Facilities' }).click();
+
+    // --- COUNTRY filter ---
+    const countryDropdown = page.locator('#COUNTRIES div').filter({ hasText: 'Select' }).nth(1);
+    await countryDropdown.click();
+    const countryInput = countryDropdown.locator('input');
+    await countryInput.fill(country);
+    const countryOption = page.locator('#COUNTRIES div').filter({ hasText: country }).nth(1);
+    await countryOption.click();
+    await page.keyboard.press('Enter');
+
+    // --- FACILITY TYPE filter ---
+    const typeDropdown = page.locator('#FACILITY_TYPE div').filter({ hasText: 'Select' }).first();
+    await typeDropdown.click();
+    const typeInput = typeDropdown.locator('input');
+    await typeInput.fill(facilityType);
+    const typeOption = page.locator('#FACILITY_TYPE div').filter({ hasText: facilityType }).first();
+    await typeOption.click();
+    await page.keyboard.press('Enter');
+
+    // --- NUMBER OF WORKERS filter ---
+    const workersDropdown = page.locator('#NUMBER_OF_WORKERS div').filter({ hasText: 'Select' }).first();
+    await workersDropdown.click();
+    const workersInput = workersDropdown.locator('input');
+    await workersInput.fill(workerRange);
+    const workersOption = page.locator('#NUMBER_OF_WORKERS div').filter({ hasText: workerRange }).first();
+    await workersOption.click();
+    await page.keyboard.press('Enter');
+
+    // --- Click search ---
+    const searchButton = page.locator('button[type="submit"]', { hasText: /search/i });
+    await searchButton.waitFor({ state: 'visible' });
+    await searchButton.click();
+
+    // --- Click the first facility link ---
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: 'visible' });
+
+    await Promise.all([
+      page.waitForURL(/\/facilities\//),
+      facilityLink.click({ force: true })
+    ]);
+
+    // --- Expand and assert Facility Type ---
+    const mainPanel = page.locator('#mainPanel');
+    await mainPanel.scrollIntoViewIfNeeded();
+
+    const facilityTypeSection = page.locator('text=Facility Type').first().locator('xpath=../../..');
+    const moreTypeButton = facilityTypeSection.locator('button:has-text("entries")');
+    await moreTypeButton.click();
+
+    const facilityTypeSlide = page.locator('text=Facility Type').nth(1).locator('xpath=ancestor::div[contains(@style, "translate")]');
+    await facilityTypeSlide.waitFor({ state: 'visible' });
+    await expect(facilityTypeSlide).toContainText(new RegExp(facilityType, 'i'));
+    await page.getByRole('button', { name: 'Close' }).click();
+
+    // --- Expand and assert Worker Range ---
+    const workersSection = page.locator('text=Number of workers').first().locator('xpath=../../..');
+    const moreWorkersButton = workersSection.locator('button:has-text("entries")');
+    await moreWorkersButton.click();
+
+    const workersSlide = page.locator('text=Number of workers').nth(1).locator('xpath=ancestor::div[contains(@style, "translate")]');
+    await workersSlide.waitFor({ state: 'visible' });
+
+    const monthRegex = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+    const { min, max } = workerRangeBounds[workerRange];
+    const workerTexts = await workersSlide.locator('p').allTextContents();
+
+    const workerCount = workerTexts
+      .filter(text => !monthRegex.test(text))
+      .map(text => parseInt(text.replace(/,/g, '').trim(), 10))
+      .find(num => !isNaN(num) && num >= min && num <= max);
+
+    expect(workerCount, `Expected a worker count between ${min} and ${max}, but none found.`).toBeDefined();
+
+    // --- Assert country still appears ---
+    await expect(page.getByText(country, { exact: false }).first()).toBeVisible();
+  });
+});
