@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, chromium } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 
@@ -127,53 +127,166 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
   });
 });
 
-test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async ({
-  page,
-}) => {
+test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
+  const browser = await chromium.launch({ headless: true }); // set headless: false to run withx UI
+  const context = await browser.newContext();
+
+  // Open the admin page
+  const adminPage = await context.newPage();
   // 1. Check your user in the admin panel
   const { BASE_URL } = process.env;
-  await page.goto(`${BASE_URL}/admin/api/contributor/`!);
+  await adminPage.goto(`${BASE_URL}/admin/api/contributor/`!);
 
   // make sure that we are on the login page of Admin Dashboard
-  const title = await page.title();
+  const title = await adminPage.title();
   expect(title).toBe("Log in | Django site admin");
-  await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
+  await expect(adminPage.getByText("Open Supply Hub Admin")).toBeVisible();
 
   // fill in login credentials
   const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-  await page.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
-  await expect(page.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)).toBeVisible();
+  await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
+  await adminPage.getByRole("button", { name: "Log In" }).click();
+  await expect(adminPage.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)).toBeVisible();
 
   // make sure that we have successfully logged in
   await expect(
-    page.getByRole("link", { name: "Open Supply Hub Admin" })
+    adminPage.getByRole("link", { name: "Open Supply Hub Admin" })
   ).toBeVisible();
-  await expect(page.getByText("Select contributor to change")).toBeVisible();
-  const searchInput = page.getByRole("textbox", { name: "Search" });
+  await expect(adminPage.getByText("Select contributor to change")).toBeVisible();
+  const searchInput = adminPage.getByRole("textbox", { name: "Search" });
   await searchInput.fill(USER_ADMIN_EMAIL!);
-  await page.getByRole("button", { name: "Search" }).click();
-  await page.reload({ waitUntil: "networkidle" });
+  await adminPage.getByRole("button", { name: "Search" }).click();
+  await adminPage.waitForLoadState("networkidle");
 
-  const firstRowLink = page.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
+  const firstRowLink = adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
   await firstRowLink.click();
-  await page.reload({ waitUntil: "networkidle" });
+  await adminPage.waitForLoadState("networkidle");
 
-  await expect(page.getByText("Change contributor")).toBeVisible();
-  const adminInput = page.locator("#id_admin");
+  await expect(adminPage.getByText("Change contributor")).toBeVisible();
+  const adminInput = adminPage.locator("#id_admin");
   expect(await adminInput.locator("option:checked").textContent()).toBe(USER_ADMIN_EMAIL);
 
   // 2. Delete Embed config and Embed level
-  const embedConfigInput = page.locator("#id_embed_config");
-  const embedLevelInput = page.locator("#id_embed_level");
+  const embedConfigInput = adminPage.locator("#id_embed_config");
+  const embedLevelInput = adminPage.locator("#id_embed_level");
 
 
-  await embedConfigInput.selectOption('');
-  await embedLevelInput.selectOption('');
+  await embedConfigInput.selectOption("");
+  await embedLevelInput.selectOption("");
   expect(await embedConfigInput.locator("option:checked").textContent()).toBe("---------");
   expect(await embedLevelInput.locator("option:checked").textContent()).toBe("---------");
 
+  await adminPage.locator("input[type='submit'][value='Save']").click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("The contributor")).toBeVisible();
+  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+
+  // 3. Check User settings
+  const settingsPage = await context.newPage();
+  await settingsPage.goto(`${BASE_URL}/settings/`!);
+  await settingsPage.locator("button:has-text('Embed')").click();
+  await settingsPage.waitForLoadState("networkidle");
+
+  await expect(
+    settingsPage.locator("text=Looking to display your supplier data on your website?")
+  ).toHaveText(/Looking to display your supplier data on your website?/);
+  await expect(
+    settingsPage.locator("text=The Open Supply Hub offers an easy-to-use embedded map option for your website.")
+  ).toHaveText(/The Open Supply Hub offers an easy-to-use embedded map option for your website./);
+  await expect(
+    settingsPage.locator("text=Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab.")
+  ).toHaveText(/Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab./);
+  await expect(settingsPage.getByRole("link", { name: "OS Hub Embedded Map" })).toBeVisible();
+
+  // 4. Return back to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
+  await firstRowLink.click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await adminPage.locator("#id_embed_level").selectOption("3");
+  expect(
+    await adminPage.locator("#id_embed_level").locator("option:checked").textContent()
+  ).toBe("Embed Deluxe / Custom Embed");
+
+  await adminPage.locator("input[type='submit'][value='Save']").click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("The contributor")).toBeVisible();
+  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+
+  // 5. User should see the form with settings for embedded map
+  await settingsPage.reload({ waitUntil: "networkidle" });
+  await settingsPage.locator("button:has-text('Embed')").click();
+  await settingsPage.waitForLoadState("networkidle");
+
+  await expect(
+    settingsPage.locator("text=Generate a customized OS Hub Embedded Map for your website.")
+  ).toHaveText(/Generate a customized OS Hub Embedded Map for your website./);
+  await expect(
+    settingsPage.locator("text=Embed code for your website")
+  ).toHaveText(/Embed code for your website/);
+  await expect(
+    settingsPage.locator("text=Generate a customized OS Hub Embedded Map")
+  ).toHaveText(/Generate a customized OS Hub Embedded Map/);
+  await expect(
+    settingsPage.locator("text=Embed code for your website")
+  ).toHaveText(/Embed code for your website/);
+  await expect(
+    settingsPage.locator("text=This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc.")
+  ).toHaveText(/This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc./);
+  await expect( settingsPage.locator("iframe")).not.toBeVisible();
+
+  // 6. Put size for the map, for example, 100%. Waite until the map is generated
+  const checkbox = settingsPage.locator('label:has-text("100%") input[type="checkbox"]');
+  await checkbox.waitFor({ state: 'visible' });
+  await checkbox.scrollIntoViewIfNeeded();
+
+  await expect(checkbox).not.toBeChecked();
+  settingsPage.on('response', async response => {
+    if (response.url().includes('/api/embed-configs/')) {
+      console.log(`🎯 [${response.status()}] ${response.url()}`);
+      const json = await response.json();
+      console.log(json);
+    }
+  });
+
+  await checkbox.check({ force: true });
+  await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
 
+  // const iframeLocator = settingsPage.locator('iframe[title="embedded-map"]');
+  // await iframeLocator.waitFor({ state: 'visible', timeout: 10000 });
+
+  // Get the actual iframe content (Frame object)
+  // const frame = await iframeLocator.elementHandle().then(el => el?.contentFrame());
+
+  // if (!frame) throw new Error("Iframe frame not loaded");
+
+  // // Wait for the map container inside the iframe to appear
+  // await frame.waitForSelector('.leaflet-container', { state: 'visible', timeout: 10000 });
+
+  // // Assert the map is visible
+  // await expect(frame.locator('.leaflet-container')).toBeVisible();
+
+  // Get the content inside the iframe and wait for an element to appear
+  // const frame = iframeLocator.contentFrame();
+  // await frame.waitForSelector('.leaflet-container'); // Wait for map to be rendered inside the iframe
+
+  // Now you can interact with the iframe content
+  // await frame.click('button#zoom-in');
+  // const map = settingsPage.locator('#oar-leaflet-map');
+  // await expect(map).toBeVisible();
+  // await expect(settingsPage.locator('.leaflet-tile-loaded')).toHaveCount(1);
+  // // 7. Check in the admin panel whether Embed config is filled in.
+  // await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
+  // await adminPage.waitForLoadState("networkidle");
+  // expect(await adminPage.locator("#id_embed_config").locator("option:checked").textContent()).toBe("EmbedConfig 113, Size: 100% x 75");
+
+  // const body = await response.json();
+  // expect(body.success).toBe(true);
+
+  // await settingsPage.waitForTimeout(5000);
+  // await settingsPage.locator("iframe").waitFor({ state: "visible" });
+  // await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
 });
