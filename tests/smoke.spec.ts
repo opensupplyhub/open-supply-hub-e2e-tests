@@ -253,8 +253,9 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await page.getByRole("button", { name: "Log In" }).click();
     await page.waitForLoadState("networkidle");
 
+    const addDataText = "Add Data";
     page
-      .locator('div.nav-item a.button:has-text("Add Data")')
+      .locator(`div.nav-item a.button:has-text("${addDataText}")`)
       .click({ force: true });
     await expect(
       page.getByRole("heading", {
@@ -283,8 +284,8 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
 
     const nameInput = page.getByLabel("Enter the name for this facility list");
-    await nameInput.fill(`Test name!@@%^^&*()":,./ CO. LTD`);
-    await expect(nameInput).toHaveValue(`Test name!@@%^^&*()":,./ CO. LTD`);
+    await nameInput.fill('Test name!@@%^^&*()":,./ CO. LTD');
+    await expect(nameInput).toHaveValue('Test name!@@%^^&*()":,./ CO. LTD');
     await submitButton.click();
     await expect(
       page.locator(".form__field", {
