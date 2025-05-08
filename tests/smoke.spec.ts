@@ -501,7 +501,10 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
 
-  // const iframeLocator = settingsPage.locator('iframe[title="embedded-map"]');
+  const iframeLocator = settingsPage.locator('iframe');
+  const locator = settingsPage.locator('#oar-leaflet-map').contentFrame();
+  console.log('!!!', locator)
+  // await locator.click();
   // await iframeLocator.waitFor({ state: 'visible', timeout: 10000 });
 
   // Get the actual iframe content (Frame object)
@@ -513,7 +516,8 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   // await frame.waitForSelector('.leaflet-container', { state: 'visible', timeout: 10000 });
 
   // // Assert the map is visible
-  // await expect(frame.locator('.leaflet-container')).toBeVisible();
+  await expect(iframeLocator.locator('.leaflet-container')).toBeVisible();
+
 
   // Get the content inside the iframe and wait for an element to appear
   // const frame = iframeLocator.contentFrame();
