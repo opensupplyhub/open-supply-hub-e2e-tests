@@ -185,6 +185,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
 
     const submitButton = page.getByRole("button", { name: /submit/i });
+    await submitButton.scrollIntoViewIfNeeded();
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
     await page.waitForLoadState("networkidle");
@@ -232,9 +233,34 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
       await expect(headers.nth(index)).toHaveText(column.name);
       await expect(row.locator("td").nth(index)).toHaveText(column.value);
     }
+
+    await row.click();
+
+    // Poll is repeatedly check whether the result is ready, with timeouts to avoid hard waits.
+    await expect.poll(() => {
+      const header = page.locator("h2", {
+        hasText: "Thank you for submitting your list!",
+      });
+      return !(header.isVisible());
+    }, {
+      intervals: [1000, 2000, 10000],
+      timeout: 1260000
+    }).toBe(true);
+    // Post uploading errors occurred while parsing your list.
+    await page.waitForSelector('h2:has-text("DO NOT APPROVE test release")');
+    await expect(
+      page.getByRole("heading", { name: "List Status" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "PENDING" })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
+    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+
   });
 
-  test("Upload list validation in CSV format.", async ({ page }) => {
+  test("The list validation before upload.", async ({ page }) => {
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -268,6 +294,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
 
     const submitButton = page.getByRole("button", { name: /submit/i });
+    await submitButton.scrollIntoViewIfNeeded();
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
 
