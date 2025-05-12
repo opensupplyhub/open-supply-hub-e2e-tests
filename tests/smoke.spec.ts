@@ -408,46 +408,62 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await expect(
     settingsPage.locator("text=This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc.")
   ).toHaveText(/This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc./);
-  await expect( settingsPage.locator("iframe")).not.toBeVisible();
+  await expect(settingsPage.locator("iframe")).not.toBeVisible();
+  await expect(
+    settingsPage.locator("text=Choose a color and enter a width and height to see a preview.")
+  ).toHaveText(/Choose a color and enter a width and height to see a preview./);
+
 
   // 6. Put size for the map, for example, 100%. Waite until the map is generated
+  const width = settingsPage.locator('input#width');
+  await width.fill("1000");
+  const height = settingsPage.locator('input#height');
+  await height.fill("1000");
+
+  // const label = settingsPage.locator('label:has-text("100%")');
+  // await label.waitFor({ state: 'visible' });
+  // await label.scrollIntoViewIfNeeded();
+  // await label.click({ force: true });
+  // await settingsPage.waitForLoadState("networkidle");
+  // await settingsPage.screenshot({ path: 'screenshot.png', fullPage: true });
+
   const checkbox = settingsPage.locator('label:has-text("100%") input[type="checkbox"]');
   await checkbox.waitFor({ state: 'visible' });
   await checkbox.scrollIntoViewIfNeeded();
   await expect(checkbox).not.toBeChecked();
-  await checkbox.check({ force: true });
+  // await checkbox.check({ force: true });
+  await checkbox.evaluate((el) => (el as HTMLElement).click());
+
+  // const checkbox = settingsPage.locator('label:has-text("100%")');
+  // await checkbox.click({ force: true });
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
-  // await expect.poll(() => {
-  //   const response = settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
-  //   return response.status();
-  // }, {
-  //   intervals: [30000],
-  //   timeout: 1600000
-  // }).toBe(200);
+  await expect.poll( async () => {
+    const response = await settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
 
-  // await expect.poll(async () => {
-  //   const response = await settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
-  //   return response.status();
-  // }, {
-  //   timeout: 60000
-  // }).toBe(200);
+    return response.status();
+  }, {
+    message: '/api/embed-configs/ succeeds',
+    timeout: 10000,
+  }).toBe(200);
+  await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
 
-  await expect(async () => {
-    await settingsPage.waitForSelector('[id^="oar-embed-"] iframe');
+  const frame = settingsPage.frameLocator('[id^="oar-embed-"] iframe');
+  await frame.locator('button', { hasText: /draw custom area/i }).click();
 
-    const frameLocator = settingsPage.locator('[id^="oar-embed-"]').contentFrame();
-    const zoomButton = frameLocator.locator('button', { hasText: /zoom to search/i });
-    const drawButton = frameLocator.locator('button', { hasText: /draw custom area/i });
-    expect(zoomButton).toBeVisible();
-    expect(drawButton).toBeVisible();
-    drawButton.click();
-    const texts = frameLocator.locator("ul.leaflet-draw-actions > li a").allTextContents();
-    console.log(texts);
+  const texts = await frame.locator("ul.leaflet-draw-actions > li a").allTextContents();
+  expect(texts).toEqual([ "Finish", "Delete last point", "Cancel" ]);
 
-  }).toPass({
-    timeout: 60000
-  });
+  await adminPage.reload({ waitUntil: "networkidle" });
+  const rowLink = adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
+  await rowLink.click();
+  await adminPage.waitForLoadState("networkidle");
 
-  // await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
+  await expect(adminPage.getByText("Change contributor")).toBeVisible();
+  const configInput = adminPage.locator("#id_embed_config");
+  console.log(await configInput.locator("option:checked").textContent())
+  expect(await configInput.locator("option:checked").textContent()).toBe("EmbedConfig 131, Size: 100% x 100");
+  const selectedValue = await configInput.locator("option:checked").getAttribute("value");
+  expect(selectedValue).toBe("134");
+
 });
