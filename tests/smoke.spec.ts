@@ -422,11 +422,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await checkbox.waitFor({ state: "visible" });
   await checkbox.scrollIntoViewIfNeeded();
   await expect(checkbox).not.toBeChecked();
-
-  await checkbox.evaluate((el) => (el as HTMLElement).click());
-
-  // const checkbox = settingsPage.locator('label:has-text("100%")');
-  // await checkbox.click({ force: true });
+  await checkbox.click({ force: true });
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
   await expect.poll( async () => {
