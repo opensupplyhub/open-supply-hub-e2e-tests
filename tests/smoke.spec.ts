@@ -129,6 +129,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
 
 test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () => {
   test("Successful list uploading in CSV format.", async ({ page }) => {
+    test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -238,14 +239,19 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 
     // Poll is repeatedly check whether the result is ready, with timeouts to avoid hard waits.
     await expect.poll(() => {
+      const refreshButton = page.getByRole("button", { name: /REFRESH/i });
+      expect(refreshButton).toBeVisible();
+      toMainButton.click();
+
       const header = page.locator("h2", {
         hasText: "Thank you for submitting your list!",
       });
       return !(header.isVisible());
     }, {
-      intervals: [1000, 2000, 10000],
-      timeout: 1260000
+      intervals: [30000],
+      timeout: 1600000
     }).toBe(true);
+
     // Post uploading errors occurred while parsing your list.
     await page.waitForSelector('h2:has-text("DO NOT APPROVE test release")');
     await expect(
@@ -258,6 +264,104 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByText( /Download submitted file/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
 
+  });
+
+  test("!!!.", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(
+      page.getByRole("heading", { name: "Contribute" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "My Lists" }).click();
+    await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    await page.locator("table tbody tr:first-child").click();
+    await page.waitForLoadState("networkidle");
+
+    // Post uploading errors occurred while parsing your list.
+    await page.waitForSelector('h2:has-text("DO NOT APPROVE test release")');
+    await expect(
+      page.getByRole("heading", { name: "List Status" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "PENDING" })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
+    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+    await page.evaluate(() => {
+      window.scrollBy(0, 100); // scroll down 200px
+    });
+
+    await page.locator(".select__control").click();
+    await page.locator(".select__control input").fill("ERROR_PARSING");
+    console.log(await page.content())
+
+// // 1. Click the multi-select input to open the dropdown
+// await page.locator('#listItemStatus').click({force:true});
+
+// // 2. Wait for the portal with options to appear
+// const optionLocator = page.locator('.select__menu-portal .select__option', {
+//   hasText: 'ERROR_PARSING',
+// });
+// const optionLocator2 = page.locator('.select__menu-portal .select__option');
+//  console.log(await optionLocator2.textContent())
+// await expect(optionLocator).toBeVisible();
+
+// // 3. Click the specific option
+// await optionLocator.click({force:true});
+
+
+    // await expect(option).toBeVisible();
+    // await option.waitFor({ state: 'attached' });
+    // await option.click()
+  // await embedConfigInput.selectOption("ERROR_PARSING");
+  // expect(await embedConfigInput.locator("option:checked").textContent()).toBe("ERROR_PARSING");
+    // console.log(await page.content())
+    // const option = page.locator('.select__menu-portal', { hasText: 'ERROR_PARSING' });
+    // await expect(option).toBeVisible();
+    // await option.click({force: true});
+    // await page.waitForLoadState("networkidle");
+
+    // const errorTag = page.locator('.select__multi-value__label', { hasText: 'ERROR_PARSING' });
+    // await errorTag.waitFor({ state: "visible" });
+    // await errorTag.click({ force: true });
+    // await page.waitForLoadState("networkidle");
+
+    // const errorRows = page.locator("table tbody tr");
+    // expect(await errorRows.count()).toBe(2);
+
+    // const headers = page.locator("table thead tr th");
+    // const headerTexts = await headers.allTextContents();
+    // const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
+
+    // if (statusColIndex === -1) {
+    // throw new Error(`Header with label "${label}" not found`);
+    // }
+
+    // const rows = page.locator("table tbody tr");
+    // const statuses = await Promise.all(
+    //   (await rows.all()).map(async (row) => {
+    //     const cell = row.locator("td").nth(statusColIndex);
+    //     const text = await cell.innerText();
+    //     return text.trim();
+    //   })
+    // );
   });
 
   test("The list validation before upload.", async ({ page }) => {
