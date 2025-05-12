@@ -296,8 +296,13 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 });
 
 test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
+  test.setTimeout(60000);
   const browser = await chromium.launch({ headless: true }); // set headless: false to run withx UI
   const context = await browser.newContext();
+
+  // Reset cookies and storage
+  await context.clearCookies();
+  await context.clearPermissions();
 
   // Open the admin page
   const adminPage = await context.newPage();
@@ -411,132 +416,38 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await checkbox.scrollIntoViewIfNeeded();
   await expect(checkbox).not.toBeChecked();
   await checkbox.check({ force: true });
-  const cookies = await settingsPage.context().cookies();
-  const csrfCookie = cookies.find(c => c.name === 'csrftoken');
-  const csrfToken = csrfCookie?.value;
-  console.log('!!!', csrfToken)
-  await settingsPage.request.post('https://test.os-hub.net/api/embed-configs/', {
-    headers: {
-      'Referer': 'https://test.os-hub.net/settings/',
-      'X-CSRFToken': csrfToken!,
-      'Content-Type': 'application/json',
-    },
-    data: {
-      "width": "100%",
-      "height": 75,
-      "color": "#3d2f8c",
-      "font": "'Darker Grotesque',sans-serif",
-      "prefer_contributor_name": false,
-      "text_search_label": "Facility Name or OS ID",
-      "map_style": "default",
-      "hide_sector_data": false,
-      "fullWidth": true,
-      "preferContributorName": false,
-      "textSearchLabel": "Facility Name or OS ID",
-      "mapStyle": "default",
-      "hideSectorData": false,
-      "embed_fields": [
-          {
-              "visible": false,
-              "order": 0,
-              "display_name": "",
-              "column_name": ""
-          },
-          {
-              "visible": false,
-              "order": 1,
-              "display_name": "facility_type_processing_type",
-              "column_name": "facility_type_processing_type"
-          },
-          {
-              "visible": true,
-              "order": 2,
-              "display_name": "Number of Workers",
-              "column_name": "number_of_workers"
-          },
-          {
-              "visible": false,
-              "order": 3,
-              "display_name": "sector_product_type",
-              "column_name": "sector_product_type"
-          },
-          {
-              "visible": true,
-              "order": 4,
-              "display_name": "Processing Type",
-              "column_name": "processing_type"
-          },
-          {
-              "visible": true,
-              "order": 5,
-              "display_name": "Product Type",
-              "column_name": "product_type"
-          },
-          {
-              "visible": true,
-              "order": 6,
-              "display_name": "Facility Type",
-              "column_name": "facility_type"
-          },
-          {
-              "visible": true,
-              "order": 7,
-              "display_name": "Parent Company",
-              "column_name": "parent_company"
-          }
-      ]
-  },
-  });
-  await settingsPage.route('**api/embed-configs/', async (route, request) => {
-    console.log(request.headers());
-    route.continue();
-  });
-
-  settingsPage.on('response', res => {
-    if(res.url().includes("/api/embed-configs/")) {
-      console.log(`🎯 [${res.status()}] ${res.url()}`);
-      console.log( res.text());
-    }
-   })
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
+  // await expect.poll(() => {
+  //   const response = settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
+  //   return response.status();
+  // }, {
+  //   intervals: [30000],
+  //   timeout: 1600000
+  // }).toBe(200);
 
-  const iframeLocator = settingsPage.locator('iframe');
-  const locator = settingsPage.locator('#oar-leaflet-map').contentFrame();
-  console.log('!!!', locator)
-  // await locator.click();
-  // await iframeLocator.waitFor({ state: 'visible', timeout: 10000 });
+  // await expect.poll(async () => {
+  //   const response = await settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
+  //   return response.status();
+  // }, {
+  //   timeout: 60000
+  // }).toBe(200);
 
-  // Get the actual iframe content (Frame object)
-  // const frame = await iframeLocator.elementHandle().then(el => el?.contentFrame());
+  await expect(async () => {
+    await settingsPage.waitForSelector('[id^="oar-embed-"] iframe');
 
-  // if (!frame) throw new Error("Iframe frame not loaded");
+    const frameLocator = settingsPage.locator('[id^="oar-embed-"]').contentFrame();
+    const zoomButton = frameLocator.locator('button', { hasText: /zoom to search/i });
+    const drawButton = frameLocator.locator('button', { hasText: /draw custom area/i });
+    expect(zoomButton).toBeVisible();
+    expect(drawButton).toBeVisible();
+    drawButton.click();
+    const texts = frameLocator.locator("ul.leaflet-draw-actions > li a").allTextContents();
+    console.log(texts);
 
-  // // Wait for the map container inside the iframe to appear
-  // await frame.waitForSelector('.leaflet-container', { state: 'visible', timeout: 10000 });
+  }).toPass({
+    timeout: 60000
+  });
 
-  // // Assert the map is visible
-  await expect(iframeLocator.locator('.leaflet-container')).toBeVisible();
-
-
-  // Get the content inside the iframe and wait for an element to appear
-  // const frame = iframeLocator.contentFrame();
-  // await frame.waitForSelector('.leaflet-container'); // Wait for map to be rendered inside the iframe
-
-  // Now you can interact with the iframe content
-  // await frame.click('button#zoom-in');
-  // const map = settingsPage.locator('#oar-leaflet-map');
-  // await expect(map).toBeVisible();
-  // await expect(settingsPage.locator('.leaflet-tile-loaded')).toHaveCount(1);
-  // // 7. Check in the admin panel whether the Embed config is filled in
-  // await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
-  // await adminPage.waitForLoadState("networkidle");
-  // expect(await adminPage.locator("#id_embed_config").locator("option:checked").textContent()).toBe("EmbedConfig 113, Size: 100% x 75");
-
-  // const body = await response.json();
-  // expect(body.success).toBe(true);
-
-  // await settingsPage.waitForTimeout(5000);
-  // await settingsPage.locator("iframe").waitFor({ state: "visible" });
   // await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
 });
