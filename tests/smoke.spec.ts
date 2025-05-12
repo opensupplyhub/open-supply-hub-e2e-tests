@@ -296,8 +296,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 });
 
 test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
-  test.setTimeout(60000);
-  const browser = await chromium.launch({ headless: true }); // set headless: false to run withx UI
+  const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
   const context = await browser.newContext();
 
   // Reset cookies and storage
@@ -413,25 +412,17 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
     settingsPage.locator("text=Choose a color and enter a width and height to see a preview.")
   ).toHaveText(/Choose a color and enter a width and height to see a preview./);
 
-
   // 6. Put size for the map, for example, 100%. Waite until the map is generated
-  const width = settingsPage.locator('input#width');
+  const width = settingsPage.locator("input#width");
   await width.fill("1000");
-  const height = settingsPage.locator('input#height');
+  const height = settingsPage.locator("input#height");
   await height.fill("1000");
 
-  // const label = settingsPage.locator('label:has-text("100%")');
-  // await label.waitFor({ state: 'visible' });
-  // await label.scrollIntoViewIfNeeded();
-  // await label.click({ force: true });
-  // await settingsPage.waitForLoadState("networkidle");
-  // await settingsPage.screenshot({ path: 'screenshot.png', fullPage: true });
-
-  const checkbox = settingsPage.locator('label:has-text("100%") input[type="checkbox"]');
-  await checkbox.waitFor({ state: 'visible' });
+  const checkbox = settingsPage.locator("label:has-text('100%') input[type='checkbox']");
+  await checkbox.waitFor({ state: "visible" });
   await checkbox.scrollIntoViewIfNeeded();
   await expect(checkbox).not.toBeChecked();
-  // await checkbox.check({ force: true });
+
   await checkbox.evaluate((el) => (el as HTMLElement).click());
 
   // const checkbox = settingsPage.locator('label:has-text("100%")');
@@ -443,13 +434,13 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
 
     return response.status();
   }, {
-    message: '/api/embed-configs/ succeeds',
+    message: "/api/embed-configs/ succeeds",
     timeout: 10000,
   }).toBe(200);
   await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
 
-  const frame = settingsPage.frameLocator('[id^="oar-embed-"] iframe');
-  await frame.locator('button', { hasText: /draw custom area/i }).click();
+  const frame = settingsPage.frameLocator("[id^='oar-embed-'] iframe");
+  await frame.locator("button", { hasText: /draw custom area/i }).click();
 
   const texts = await frame.locator("ul.leaflet-draw-actions > li a").allTextContents();
   expect(texts).toEqual([ "Finish", "Delete last point", "Cancel" ]);
@@ -461,9 +452,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
 
   await expect(adminPage.getByText("Change contributor")).toBeVisible();
   const configInput = adminPage.locator("#id_embed_config");
-  console.log(await configInput.locator("option:checked").textContent())
   expect(await configInput.locator("option:checked").textContent()).toBe("EmbedConfig 131, Size: 100% x 100");
   const selectedValue = await configInput.locator("option:checked").getAttribute("value");
   expect(selectedValue).toBe("134");
-
 });
