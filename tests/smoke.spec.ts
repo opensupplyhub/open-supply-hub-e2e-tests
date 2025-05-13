@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
-import * as path from "path";
-import * as fs from "fs";
 
 test.beforeAll(setup);
 
@@ -133,56 +131,57 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   page,
 }) => {
   const { BASE_URL } = process.env;
-  
-  // Test step 1: Only authorised user has access
-  // make sure that we can not open the SLC flow without authorization
   await page.goto(`${BASE_URL}/contribute/single-location`!);
 
-  await expect(page.getByRole("heading", { name: "Production Location Search" })).toBeVisible();
-  await page.getByRole("link", { name: "Log in to contribute to Open Supply Hub" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Production Location Search" })
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+    .click();
   await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-  
-  
-  // fill in login credentials
+
   const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
   await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-  await page.getByRole("textbox", { name: "Password" }).fill(USER_ADMIN_PASSWORD!);
+  await page
+    .getByRole("textbox", { name: "Password" })
+    .fill(USER_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Log In" }).click();
 
-  // make sure that we can get to SLC page throught UI
   await page.getByRole("link", { name: "Add Data" }).click();
-  await expect(page.getByRole("button", { name: "Add a Single Location" })).toBeVisible();
-  
+  await expect(
+    page.getByRole("button", { name: "Add a Single Location" })
+  ).toBeVisible();
+
   await page.getByRole("button", { name: "Add a Single Location" }).click();
-  await expect(page.getByRole("heading", { name: "Production Location Search" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Production Location Search" })
+  ).toBeVisible();
 
-  //check that Search by Name and Address tab is active  by default
-  
-  const buttonSearchByName = page.locator('button', { hasText: 'Search by Name and Address' });
-    // tab "Search by Name and Address" is visible
-  await buttonSearchByName.waitFor({ state: 'visible' });
+  const buttonSearchByName = page.locator("button", {
+    hasText: "Search by Name and Address",
+  });
+  await buttonSearchByName.waitFor({ state: "visible" });
 
-    // tab "Search by Name and Address" is active
-  const isSelected = await buttonSearchByName.getAttribute('aria-selected');
-  expect(isSelected).toBe('true');
-  await expect(page.getByRole("heading", { name: "Production Location Details" })).toBeVisible();
+  const isSelected = await buttonSearchByName.getAttribute("aria-selected");
+  expect(isSelected).toBe("true");
+  await expect(
+    page.getByRole("heading", { name: "Production Location Details" })
+  ).toBeVisible();
 
-  //check that Search by OS ID tab is not active
-  const buttonSearchByOSID = page.locator('button', { hasText: 'Search by OS ID' });
-    // Проверяем, что кнопка видима
-  await buttonSearchByOSID.waitFor({ state: 'visible' });
+  const buttonSearchByOSID = page.locator("button", {
+    hasText: "Search by OS ID",
+  });
+  await buttonSearchByOSID.waitFor({ state: "visible" });
 
-    // Проверяем, что она не выбрана
-  const isNotSelected = await buttonSearchByOSID.getAttribute('aria-selected');
-  expect(isNotSelected).toBe('false');
-  
-  
-  //***** Search by Name and Address ------------
-  
+  const isNotSelected = await buttonSearchByOSID.getAttribute("aria-selected");
+  expect(isNotSelected).toBe("false");
+
   await page.getByPlaceholder("Type a name").fill("MONTEFISH d.o.o");
-  await page.getByPlaceholder("Address").fill("Dumidan Tivatsko polje, Tivat, Tivat Municipality");
+  await page
+    .getByPlaceholder("Address")
+    .fill("Dumidan Tivatsko polje, Tivat, Tivat Municipality");
 
-  //----
   async function selectOption(id: string, option: string, label: string) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForLoadState("networkidle");
@@ -191,152 +190,187 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
 
     await selectLocator.waitFor({ state: "visible" });
     await selectLocator.click({ force: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const optionEl = page.locator(".select__option", { hasText: new RegExp(`^${option}$`) })
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const optionEl = page.locator(".select__option", {
+      hasText: new RegExp(`^${option}$`),
+    });
     await optionEl.waitFor({ state: "visible" });
     await optionEl.click({ force: true });
-
   }
-  //---
 
   await selectOption("#countries", "Montenegro", "Country");
 
   await page.getByRole("button", { name: "Search" }).click();
 
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 200
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
   );
 
-  //Check result page
-  await expect(page.getByRole("heading", { name: "Search results" })).toBeVisible(); 
-  await expect(page.getByRole("heading", { name: "MONTEFISH d.o.o" })).toBeVisible(); 
-  await page.locator('h3:has-text("MONTEFISH d.o.o") >> .. >> .. >> button:has-text("Select")').click();
+  await expect(
+    page.getByRole("heading", { name: "Search results" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "MONTEFISH d.o.o" })
+  ).toBeVisible();
+  await page
+    .locator(
+      'h3:has-text("MONTEFISH d.o.o") >> .. >> .. >> button:has-text("Select")'
+    )
+    .click();
 
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 200
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
   );
 
-  await expect(page.getByRole("heading", { name: "Production Location Information" })).toBeVisible(); 
-  await expect(page.locator('#name')).toHaveValue('MONTEFISH d.o.o');
-  await expect(page.locator('#address')).toHaveValue('Dumidan Tivatsko polje, Tivat, Tivat Municipality');
-  await expect(page.locator('#country')).toHaveText('Montenegro');
-  
-  //existing -> button Update
+  await expect(
+    page.getByRole("heading", { name: "Production Location Information" })
+  ).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue("MONTEFISH d.o.o");
+  await expect(page.locator("#address")).toHaveValue(
+    "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
+  );
+  await expect(page.locator("#country")).toHaveText("Montenegro");
   await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Go Back" }).click(); 
+  await page.getByRole("button", { name: "Go Back" }).click();
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 200
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
   );
+  await page.getByRole("button", { name: "I don't see my Location" }).click();
 
-  
-  // Check popup for creating new location
-  await page.getByRole("button", { name: "I don't see my Location" }).click(); 
+  await expect(
+    page.locator("#confirm-not-found-location-dialog-title")
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Yes, add a new production location" })
+    .click();
 
-  await expect(page.locator('#confirm-not-found-location-dialog-title')).toBeVisible();
-  await page.getByRole("button", { name: "Yes, add a new production location" }).click(); 
+  await expect(page.locator("#name")).toHaveValue("");
+  await expect(page.locator("#address")).toHaveValue("");
+  await expect(page.locator('#country input[type="text"]')).toHaveValue("");
 
-  // Check the form for new location
-  await expect(page.locator('#name')).toHaveValue('');
-  await expect(page.locator('#address')).toHaveValue('');
-  await expect(page.locator('#country input[type="text"]')).toHaveValue('');
+  const buttonSubmit = page.getByRole("button", { name: "Submit" });
+  await expect(buttonSubmit).toBeVisible();
+  await expect(buttonSubmit).toBeDisabled();
 
-  //new -> button submit
-  const buttonSubmit = page.getByRole("button", { name: "Submit" })
-  await expect(buttonSubmit).toBeVisible(); 
-  await expect(buttonSubmit).toBeDisabled(); 
-  
-  ////***** Search by OS ID ------------
   await page.goto(`${BASE_URL}/contribute/single-location?tab=os-id`!);
-  await expect(page.getByRole("heading", { name: "Know the OS ID for your location?" })).toBeVisible();
-
-
-  //check searching by incorrect OSID
+  await expect(
+    page.getByRole("heading", { name: "Know the OS ID for your location?" })
+  ).toBeVisible();
 
   await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID");
-  const buttonSeashByID = page.getByRole("button", { name: "Search by ID" })
-  await expect(buttonSeashByID).toBeVisible(); 
-  await expect(buttonSeashByID).toBeDisabled(); 
+  const buttonSeashByID = page.getByRole("button", { name: "Search by ID" });
+  await expect(buttonSeashByID).toBeVisible();
+  await expect(buttonSeashByID).toBeDisabled();
 
-  
   await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID1234");
-  await expect(buttonSeashByID).toBeVisible(); 
-  await expect(buttonSeashByID).not.toBeDisabled(); 
+  await expect(buttonSeashByID).toBeVisible();
+  await expect(buttonSeashByID).not.toBeDisabled();
   await buttonSeashByID.click();
 
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 404
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 404
   );
 
-    
-  await expect(page.getByRole("heading", { name: "We didn't find a production location with that ID." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "We didn't find a production location with that ID.",
+    })
+  ).toBeVisible();
 
-  
-  await expect(page.getByRole("button", { name: "Search by Name and Address" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search for another ID" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Search by Name and Address" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Search for another ID" })
+  ).toBeVisible();
 
-  //return back to the earching by OSID
-  //ME2024327W4WD1G
-  await page.getByRole("button", { name: "Back to ID search" }).click(); 
-  
+  await page.getByRole("button", { name: "Back to ID search" }).click();
   await page.getByPlaceholder("Enter the OS ID").fill("ME2024327W4WD1G");
   await buttonSeashByID.click();
-  
+
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 200
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
   );
-  await expect(page.getByRole("button", { name: "No, search by name and address" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Yes, add data and claim" })).toBeVisible();
-  await page.getByRole("button", { name: "Yes, add data and claim" }).click(); 
-  
+  await expect(
+    page.getByRole("button", { name: "No, search by name and address" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Yes, add data and claim" })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Yes, add data and claim" }).click();
+
   await page.waitForResponse(
-    async (resp) => resp.url().includes("/api/v1/production-locations/") && resp.status() == 200
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
   );
 
-  await expect(page.getByRole("heading", { name: "Production Location Information" })).toBeVisible(); 
-  await expect(page.locator('#name')).toHaveValue('MONTEFISH d.o.o');
-  await expect(page.locator('#address')).toHaveValue('Dumidan Tivatsko polje, Tivat, Tivat Municipality');
-  
-  
+  await expect(
+    page.getByRole("heading", { name: "Production Location Information" })
+  ).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue("MONTEFISH d.o.o");
+  await expect(page.locator("#address")).toHaveValue(
+    "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
+  );
 
-  await expect(page.locator('#country')).toHaveText('Montenegro');
-  
+  await expect(page.locator("#country")).toHaveText("Montenegro");
+  await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
 
-  //existing -> button Update
-  await expect(page.getByRole("button", { name: "Update" })).toBeVisible(); 
-
-  // Находим input по data-testid
-  const inputLocator = page.locator('input[data-testid="switch-additional-info-fields"]');
-  await inputLocator.waitFor({ state: 'visible' });
+  const inputLocator = page.locator(
+    'input[data-testid="switch-additional-info-fields"]'
+  );
+  await inputLocator.waitFor({ state: "visible" });
   await expect(inputLocator).not.toBeChecked();
   inputLocator.click();
   await expect(inputLocator).toBeChecked();
 
-  //Sector(s)
-  await expect(page.locator("h2", {  hasText: 'Sector(s)' })).toBeVisible(); 
-  await expect(page.locator('input[aria-label="Select sector"]')).toHaveValue('');
+  await expect(page.locator("h2", { hasText: "Sector(s)" })).toBeVisible();
+  await expect(page.locator('input[aria-label="Select sector"]')).toHaveValue(
+    ""
+  );
 
-  //Product Type(s)
-  await expect(page.locator("h2", {  hasText: 'Product Type(s)' })).toBeVisible(); 
-  await expect(page.locator('input[aria-label="Enter product type(s)"]')).toHaveValue('');
+  // Product Type(s)
+  await expect(
+    page.locator("h2", { hasText: "Product Type(s)" })
+  ).toBeVisible();
+  await expect(
+    page.locator('input[aria-label="Enter product type(s)"]')
+  ).toHaveValue("");
 
-  //Location Type(s)
-  await expect(page.locator("h2", {  hasText: 'Location Type(s)' })).toBeVisible(); 
-  await expect(page.locator('input[aria-label="Location type"]')).toHaveValue('');
+  // Location Type(s)
+  await expect(
+    page.locator("h2", { hasText: "Location Type(s)" })
+  ).toBeVisible();
+  await expect(page.locator('input[aria-label="Location type"]')).toHaveValue(
+    ""
+  );
 
-  //Processing Type(s)
-  await expect(page.getByRole("heading", { name: "Processing Type(s)" })).toBeVisible(); 
-  await expect(page.locator('input[aria-label="Processing Type"]')).toHaveValue('');
+  // Processing Type(s)
+  await expect(
+    page.getByRole("heading", { name: "Processing Type(s)" })
+  ).toBeVisible();
+  await expect(page.locator('input[aria-label="Processing Type"]')).toHaveValue(
+    ""
+  );
 
+  // Number of Workers
+  await expect(
+    page.locator("h2", { hasText: "Number of Workers" })
+  ).toBeVisible();
+  await expect(page.locator("#number_of_workers")).toHaveValue("");
 
-  //Number of Workers
-  await expect(page.locator("h2", {  hasText: 'Number of Workers' })).toBeVisible(); 
-  await expect(page.locator('#number_of_workers')).toHaveValue(''); 
-
-  //Parent Company
-  await expect(page.locator("h2", {  hasText: 'Parent Company' })).toBeVisible(); 
-  await expect(page.locator('#parent_company')).toHaveValue('');
-
-
+  // Parent Company
+  await expect(page.locator("h2", { hasText: "Parent Company" })).toBeVisible();
+  await expect(page.locator("#parent_company")).toHaveValue("");
 });
-
