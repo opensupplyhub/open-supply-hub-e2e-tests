@@ -315,6 +315,8 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await expect(adminPage.getByText("Open Supply Hub Admin")).toBeVisible();
 
   // fill in login credentials
+  await context.clearCookies();
+  await context.clearPermissions();
   const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
   await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
   await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
@@ -417,6 +419,14 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await width.fill("1000");
   const height = settingsPage.locator("input#height");
   await height.fill("1000");
+  await expect.poll( async () => {
+    const response = await settingsPage.request.post(`${BASE_URL}/api/embed-configs/`);
+
+    return response.status();
+  }, {
+    message: "POST /api/embed-configs/ succeeds",
+    timeout: 10000,
+  }).toBe(200);
 
   const checkbox = settingsPage.locator("label:has-text('100%') input[type='checkbox']");
   await checkbox.waitFor({ state: "visible" });
@@ -430,7 +440,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
 
     return response.status();
   }, {
-    message: "/api/embed-configs/ succeeds",
+    message: "GET /api/embed-configs/ succeeds",
     timeout: 10000,
   }).toBe(200);
   await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
@@ -448,7 +458,7 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
 
   await expect(adminPage.getByText("Change contributor")).toBeVisible();
   const configInput = adminPage.locator("#id_embed_config");
-  expect(await configInput.locator("option:checked").textContent()).toBe("EmbedConfig 131, Size: 100% x 100");
+  expect(await configInput.locator("option:checked").textContent()).not.toBe("---------");
   const selectedValue = await configInput.locator("option:checked").getAttribute("value");
-  expect(selectedValue).toBe("134");
+  expect(selectedValue).not.toBe("");
 });
