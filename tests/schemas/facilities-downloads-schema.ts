@@ -1,4 +1,4 @@
-export const getFacilitiesDownloadsSchema = {
+export const facilitiesDownloadsSchema = {
   type: "object",
   required: ["count", "next", "previous", "results"],
   properties: {
@@ -11,16 +11,16 @@ export const getFacilitiesDownloadsSchema = {
       properties: {
         headers: {
           type: "array",
-          items: { type: "string" }
+          items: { type: "string" },
         },
         rows: {
           type: "array",
           items: {
             type: "array",
-            items: { type: ["string", "number", "boolean", "null"] }
-          }
-        }
-      }
-    }
-  }
+            items: { type: ["string", "number", "boolean", "null"] },
+          },
+        },
+      },
+    },
+  },
 };
