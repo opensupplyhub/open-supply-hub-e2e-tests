@@ -127,7 +127,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
   });
 });
 
-test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
   const { BASE_URL } = process.env;
@@ -177,12 +177,13 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   const isNotSelected = await buttonSearchByOSID.getAttribute("aria-selected");
   expect(isNotSelected).toBe("false");
 
-  await page.getByPlaceholder("Type a name").fill("MONTEFISH d.o.o");
+  const locationName = "MONTEFISH d.o.o";
+  await page.getByPlaceholder("Type a name").fill(locationName);
   await page
     .getByPlaceholder("Address")
     .fill("Dumidan Tivatsko polje, Tivat, Tivat Municipality");
 
-  async function selectOption(id: string, option: string, label: string) {
+  async function selectOption(id: string, option: string) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForLoadState("networkidle");
     await page.waitForSelector(`${id} .select__control`);
@@ -198,8 +199,7 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
     await optionEl.click({ force: true });
   }
 
-  await selectOption("#countries", "Montenegro", "Country");
-
+  await selectOption("#countries", "Montenegro");
   await page.getByRole("button", { name: "Search" }).click();
 
   await page.waitForResponse(
@@ -211,12 +211,10 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   await expect(
     page.getByRole("heading", { name: "Search results" })
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "MONTEFISH d.o.o" })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: locationName })).toBeVisible();
   await page
     .locator(
-      'h3:has-text("MONTEFISH d.o.o") >> .. >> .. >> button:has-text("Select")'
+      `h3:has-text("${locationName}") >> .. >> .. >> button:has-text("Select")`
     )
     .click();
 
@@ -229,7 +227,7 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue("MONTEFISH d.o.o");
+  await expect(page.locator("#name")).toHaveValue(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -265,14 +263,14 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   ).toBeVisible();
 
   await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID");
-  const buttonSeashByID = page.getByRole("button", { name: "Search by ID" });
-  await expect(buttonSeashByID).toBeVisible();
-  await expect(buttonSeashByID).toBeDisabled();
+  const buttonSearchByID = page.getByRole("button", { name: "Search by ID" });
+  await expect(buttonSearchByID).toBeVisible();
+  await expect(buttonSearchByID).toBeDisabled();
 
   await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID1234");
-  await expect(buttonSeashByID).toBeVisible();
-  await expect(buttonSeashByID).not.toBeDisabled();
-  await buttonSeashByID.click();
+  await expect(buttonSearchByID).toBeVisible();
+  await expect(buttonSearchByID).not.toBeDisabled();
+  await buttonSearchByID.click();
 
   await page.waitForResponse(
     async (resp) =>
@@ -295,7 +293,7 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
 
   await page.getByRole("button", { name: "Back to ID search" }).click();
   await page.getByPlaceholder("Enter the OS ID").fill("ME2024327W4WD1G");
-  await buttonSeashByID.click();
+  await buttonSearchByID.click();
 
   await page.waitForResponse(
     async (resp) =>
@@ -319,7 +317,7 @@ test.only("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue("MONTEFISH d.o.o");
+  await expect(page.locator("#name")).toHaveValue(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
