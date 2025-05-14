@@ -18,12 +18,12 @@ jobs:
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-      USER_EMAIL: ${{ process.env.USER_EMAIL }}
-      USER_PASSWORD: ${{ process.env.USER_PASSWORD}}
-      USER_ADMIN_EMAIL: ${{ process.env.USER_ADMIN_EMAIL }}
-      USER_ADMIN_PASSWORD: ${{ process.env.USER_ADMIN_PASSWORD }}
-      USER_API_EMAIL: ${{ process.env.USER_API_EMAIL }}
-      USER_API_PASSWORD: ${{ process.env.USER_API_PASSWORD }}
+      USER_EMAIL: ${{ vars.USER_EMAIL }}
+      USER_PASSWORD: ${{ vars.USER_PASSWORD}}
+      USER_ADMIN_EMAIL: ${{ vars.USER_ADMIN_EMAIL }}
+      USER_ADMIN_PASSWORD: ${{ vars.USER_ADMIN_PASSWORD }}
+      USER_API_EMAIL: ${{ vars.USER_API_EMAIL }}
+      USER_API_PASSWORD: ${{ vars.USER_API_PASSWORD }}
     steps:
       - name: Display environment
         run: echo "Deploying to ${{ github.event.inputs.environment }}"
