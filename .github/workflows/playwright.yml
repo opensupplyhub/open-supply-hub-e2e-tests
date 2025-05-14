@@ -7,10 +7,7 @@ on:
         required: true
         default: 'test'
         type: choice
-        options:
-          - test
-          - staging
-          - production
+        options: [test, staging, production]
 permissions:
   contents: write
 jobs:
@@ -18,6 +15,15 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
+    env:
+      BASE_URL: ${{ secrets.BASE_URL }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+      USER_EMAIL: ${{ process.env.USER_EMAIL }}
+      USER_PASSWORD: ${{ process.env.USER_PASSWORD}}
+      USER_ADMIN_EMAIL: ${{ process.env.USER_ADMIN_EMAIL }}
+      USER_ADMIN_PASSWORD: ${{ process.env.USER_ADMIN_PASSWORD }}
+      USER_API_EMAIL: ${{ process.env.USER_API_EMAIL }}
+      USER_API_PASSWORD: ${{ process.env.USER_API_PASSWORD }}
     steps:
       - name: Display environment
         run: echo "Deploying to ${{ github.event.inputs.environment }}"
