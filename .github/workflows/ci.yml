@@ -6,6 +6,16 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    environment: test
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+      USER_EMAIL: ${{ vars.USER_EMAIL }}
+      USER_PASSWORD: ${{ secrets.USER_PASSWORD}}
+      USER_ADMIN_EMAIL: ${{ vars.USER_ADMIN_EMAIL }}
+      USER_ADMIN_PASSWORD: ${{ secrets.USER_ADMIN_PASSWORD }}
+      USER_API_EMAIL: ${{ vars.USER_API_EMAIL }}
+      USER_API_PASSWORD: ${{ secrets.USER_API_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
