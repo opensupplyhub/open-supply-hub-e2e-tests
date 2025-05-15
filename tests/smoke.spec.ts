@@ -352,23 +352,22 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
     .getByPlaceholder("Address")
     .fill("Dumidan Tivatsko polje, Tivat, Tivat Municipality");
 
-  async function selectOption(id: string, option: string) {
-    await page.evaluate(() => window.scrollTo(0, 0));
+  async function selectOption(id: string, optionID: string) {
+    await page.evaluate(() => window.scrollTo(0, 300));
     await page.waitForLoadState("networkidle");
-    await page.waitForSelector(`${id} .select__control`);
-    const selectLocator = page.locator(`${id} .select__control`);
 
+    const selectQuery = `${id} .select__control .select__value-container`;
+    await page.waitForSelector(selectQuery);
+
+    const selectLocator = page.locator(selectQuery);
     await selectLocator.waitFor({ state: "visible" });
-    await selectLocator.click({ force: true });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const optionEl = page.locator(".select__option", {
-      hasText: new RegExp(`^${option}$`),
-    });
-    await optionEl.waitFor({ state: "visible" });
+    await selectLocator.click();
+
+    const optionEl = page.locator(optionID);
     await optionEl.click({ force: true });
   }
 
-  await selectOption("#countries", "Montenegro");
+  await selectOption("#countries", "#react-select-3-option-148");
   await page.getByRole("button", { name: "Search" }).click();
 
   await page.waitForResponse(
