@@ -1,12 +1,32 @@
 name: Playwright Tests
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select environment to deploy'
+        required: true
+        default: 'test'
+        type: choice
+        options: [test, staging, production]
 permissions:
   contents: write
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+      USER_EMAIL: ${{ vars.USER_EMAIL }}
+      USER_PASSWORD: ${{ secrets.USER_PASSWORD}}
+      USER_ADMIN_EMAIL: ${{ vars.USER_ADMIN_EMAIL }}
+      USER_ADMIN_PASSWORD: ${{ secrets.USER_ADMIN_PASSWORD }}
+      USER_API_EMAIL: ${{ vars.USER_API_EMAIL }}
+      USER_API_PASSWORD: ${{ secrets.USER_API_PASSWORD }}
     steps:
+      - name: Display environment
+        run: echo "Deploying to ${{ github.event.inputs.environment }}"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
