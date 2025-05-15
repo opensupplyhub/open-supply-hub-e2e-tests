@@ -295,3 +295,248 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
   });
 });
+
+test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+  page,
+}) => {
+  const { BASE_URL } = process.env;
+  await page.goto(`${BASE_URL}/contribute/single-location`!);
+
+  await expect(
+    page.getByRole("heading", { name: "Production Location Search" })
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await page
+    .getByRole("textbox", { name: "Password" })
+    .fill(USER_ADMIN_PASSWORD!);
+  await page.getByRole("button", { name: "Log In" }).click();
+
+  await page.getByRole("link", { name: "Add Data" }).click();
+  await expect(
+    page.getByRole("button", { name: "Add a Single Location" })
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add a Single Location" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Production Location Search" })
+  ).toBeVisible();
+
+  const buttonSearchByName = page.locator("button", {
+    hasText: "Search by Name and Address",
+  });
+  await buttonSearchByName.waitFor({ state: "visible" });
+
+  const isSelected = await buttonSearchByName.getAttribute("aria-selected");
+  expect(isSelected).toBe("true");
+  await expect(
+    page.getByRole("heading", { name: "Production Location Details" })
+  ).toBeVisible();
+
+  const buttonSearchByOSID = page.locator("button", {
+    hasText: "Search by OS ID",
+  });
+  await buttonSearchByOSID.waitFor({ state: "visible" });
+
+  const isNotSelected = await buttonSearchByOSID.getAttribute("aria-selected");
+  expect(isNotSelected).toBe("false");
+
+  const locationName = "MONTEFISH d.o.o";
+  await page.getByPlaceholder("Type a name").fill(locationName);
+  await page
+    .getByPlaceholder("Address")
+    .fill("Dumidan Tivatsko polje, Tivat, Tivat Municipality");
+
+  async function selectOption(id: string, optionID: string) {
+    await page.evaluate(() => window.scrollTo(0, 300));
+    await page.waitForLoadState("networkidle");
+
+    const selectQuery = `${id} .select__control .select__value-container`;
+    await page.waitForSelector(selectQuery);
+
+    const selectLocator = page.locator(selectQuery);
+    await selectLocator.waitFor({ state: "visible" });
+    await selectLocator.click();
+
+    const optionEl = page.locator(optionID);
+    await optionEl.click({ force: true });
+  }
+
+  await selectOption("#countries", "#react-select-3-option-148");
+  await page.getByRole("button", { name: "Search" }).click();
+
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
+  );
+
+  await expect(
+    page.getByRole("heading", { name: "Search results" })
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: locationName })).toBeVisible();
+  await page
+    .locator(
+      `h3:has-text("${locationName}") >> .. >> .. >> button:has-text("Select")`
+    )
+    .click();
+
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
+  );
+
+  await expect(
+    page.getByRole("heading", { name: "Production Location Information" })
+  ).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue(locationName);
+  await expect(page.locator("#address")).toHaveValue(
+    "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
+  );
+  await expect(page.locator("#country")).toHaveText("Montenegro");
+  await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Go Back" }).click();
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
+  );
+  await page.getByRole("button", { name: "I don't see my Location" }).click();
+
+  await expect(
+    page.locator("#confirm-not-found-location-dialog-title")
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Yes, add a new production location" })
+    .click();
+
+  await expect(page.locator("#name")).toHaveValue("");
+  await expect(page.locator("#address")).toHaveValue("");
+  await expect(page.locator('#country input[type="text"]')).toHaveValue("");
+
+  const buttonSubmit = page.getByRole("button", { name: "Submit" });
+  await expect(buttonSubmit).toBeVisible();
+  await expect(buttonSubmit).toBeDisabled();
+
+  await page.goto(`${BASE_URL}/contribute/single-location?tab=os-id`!);
+  await expect(
+    page.getByRole("heading", { name: "Know the OS ID for your location?" })
+  ).toBeVisible();
+
+  await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID");
+  const buttonSearchByID = page.getByRole("button", { name: "Search by ID" });
+  await expect(buttonSearchByID).toBeVisible();
+  await expect(buttonSearchByID).toBeDisabled();
+
+  await page.getByPlaceholder("Enter the OS ID").fill("INVALIDOSID1234");
+  await expect(buttonSearchByID).toBeVisible();
+  await expect(buttonSearchByID).not.toBeDisabled();
+  await buttonSearchByID.click();
+
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 404
+  );
+
+  await expect(
+    page.getByRole("heading", {
+      name: "We didn't find a production location with that ID.",
+    })
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Search by Name and Address" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Search for another ID" })
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to ID search" }).click();
+  await page.getByPlaceholder("Enter the OS ID").fill("ME2024327W4WD1G");
+  await buttonSearchByID.click();
+
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
+  );
+  await expect(
+    page.getByRole("button", { name: "No, search by name and address" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Yes, add data and claim" })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Yes, add data and claim" }).click();
+
+  await page.waitForResponse(
+    async (resp) =>
+      resp.url().includes("/api/v1/production-locations/") &&
+      resp.status() == 200
+  );
+
+  await expect(
+    page.getByRole("heading", { name: "Production Location Information" })
+  ).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue(locationName);
+  await expect(page.locator("#address")).toHaveValue(
+    "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
+  );
+
+  await expect(page.locator("#country")).toHaveText("Montenegro");
+  await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
+
+  const inputLocator = page.locator(
+    'input[data-testid="switch-additional-info-fields"]'
+  );
+  await inputLocator.waitFor({ state: "visible" });
+  await expect(inputLocator).not.toBeChecked();
+  inputLocator.click();
+  await expect(inputLocator).toBeChecked();
+
+  await expect(page.locator("h2", { hasText: "Sector(s)" })).toBeVisible();
+  await expect(page.locator('input[aria-label="Select sector"]')).toHaveValue(
+    ""
+  );
+
+  // Product Type(s)
+  await expect(
+    page.locator("h2", { hasText: "Product Type(s)" })
+  ).toBeVisible();
+  await expect(
+    page.locator('input[aria-label="Enter product type(s)"]')
+  ).toHaveValue("");
+
+  // Location Type(s)
+  await expect(
+    page.locator("h2", { hasText: "Location Type(s)" })
+  ).toBeVisible();
+  await expect(page.locator('input[aria-label="Location type"]')).toHaveValue(
+    ""
+  );
+
+  // Processing Type(s)
+  await expect(
+    page.getByRole("heading", { name: "Processing Type(s)" })
+  ).toBeVisible();
+  await expect(page.locator('input[aria-label="Processing Type"]')).toHaveValue(
+    ""
+  );
+
+  // Number of Workers
+  await expect(
+    page.locator("h2", { hasText: "Number of Workers" })
+  ).toBeVisible();
+  await expect(page.locator("#number_of_workers")).toHaveValue("");
+
+  // Parent Company
+  await expect(page.locator("h2", { hasText: "Parent Company" })).toBeVisible();
+  await expect(page.locator("#parent_company")).toHaveValue("");
+});
