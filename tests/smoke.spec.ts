@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, errors } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
@@ -129,6 +129,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
 
 test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () => {
   test("Successful list uploading in CSV format.", async ({ page }) => {
+    test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -185,6 +186,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
 
     const submitButton = page.getByRole("button", { name: /submit/i });
+    await submitButton.scrollIntoViewIfNeeded();
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
     await page.waitForLoadState("networkidle");
@@ -232,9 +234,97 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
       await expect(headers.nth(index)).toHaveText(column.name);
       await expect(row.locator("td").nth(index)).toHaveText(column.value);
     }
+
+    await row.click();
+
+    // Poll is repeatedly check whether the result is ready, with timeouts to avoid hard waits.
+    await expect.poll(() => {
+      const refreshButton = page.getByRole("button", { name: /REFRESH/i });
+      expect(refreshButton).toBeVisible();
+      toMainButton.click();
+
+      const header = page.locator("h2", {
+        hasText: "Thank you for submitting your list!",
+      });
+      return !(header.isVisible());
+    }, {
+      intervals: [30000],
+      timeout: 1600000
+    }).toBe(true);
+
+    // Post uploading errors occurred while parsing your list.
+    await page.waitForSelector('h2:has-text("DO NOT APPROVE test release")');
+    await expect(
+      page.getByRole("heading", { name: "List Status" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "PENDING" })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
+    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+
   });
 
-  test("Upload list validation in CSV format.", async ({ page }) => {
+  test("Testing for parsed errors in uploaded list(join with main test)", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+
+    await expect(
+      page.getByRole("heading", { name: "Contribute" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "My Lists" }).click();
+    await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    await page.locator("table tbody tr:first-child").click();
+    await page.waitForLoadState("networkidle");
+
+    // Post uploading errors occurred while parsing your list.
+    await page.waitForSelector('h2:has-text("DO NOT APPROVE test release")');
+    await expect(
+      page.getByRole("heading", { name: "List Status" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "PENDING" })
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
+    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+    await page.evaluate(() => {
+      window.scrollBy(0, 100); // scroll down 100px
+    });
+
+    await page.locator(".select__value-container").click();
+    await page.locator(".select__option:has-text('ERROR_PARSING')").click();
+    await expect(page.locator(".select__multi-value__label")).toHaveText(/ERROR_PARSING/);
+    await page.waitForLoadState("networkidle");
+
+    const errorRows = page.locator("table tbody tr");
+    expect(await errorRows.count()).toBe(1);
+    await errorRows.click();
+    await page.evaluate(() => {
+      window.scrollBy(0, 100); // scroll down 100px
+    });
+
+    await expect(page.locator("text=Errors")).toBeVisible();
+    await expect(page.locator("text=Could not find a country code for 'Sp'ain'.")).toBeVisible();
+  });
+
+  test("The list validation before upload.", async ({ page }) => {
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -269,6 +359,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
 
     const submitButton = page.getByRole("button", { name: /submit/i });
+    await submitButton.scrollIntoViewIfNeeded();
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
 
