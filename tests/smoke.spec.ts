@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, errors } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
@@ -266,7 +266,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 
   });
 
-  test("!!!.", async ({ page }) => {
+  test("Testing for parsed errors in uploaded list(join with main test)", async ({ page }) => {
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -305,63 +305,23 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByText( /Download submitted file/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
     await page.evaluate(() => {
-      window.scrollBy(0, 100); // scroll down 200px
+      window.scrollBy(0, 100); // scroll down 100px
     });
 
-    await page.locator(".select__control").click();
-    await page.locator(".select__control input").fill("ERROR_PARSING");
-    console.log(await page.content())
+    await page.locator(".select__value-container").click();
+    await page.locator(".select__option:has-text('ERROR_PARSING')").click();
+    await expect(page.locator(".select__multi-value__label")).toHaveText(/ERROR_PARSING/);
+    await page.waitForLoadState("networkidle");
 
-// // 1. Click the multi-select input to open the dropdown
-// await page.locator('#listItemStatus').click({force:true});
+    const errorRows = page.locator("table tbody tr");
+    expect(await errorRows.count()).toBe(1);
+    await errorRows.click();
+    await page.evaluate(() => {
+      window.scrollBy(0, 100); // scroll down 100px
+    });
 
-// // 2. Wait for the portal with options to appear
-// const optionLocator = page.locator('.select__menu-portal .select__option', {
-//   hasText: 'ERROR_PARSING',
-// });
-// const optionLocator2 = page.locator('.select__menu-portal .select__option');
-//  console.log(await optionLocator2.textContent())
-// await expect(optionLocator).toBeVisible();
-
-// // 3. Click the specific option
-// await optionLocator.click({force:true});
-
-
-    // await expect(option).toBeVisible();
-    // await option.waitFor({ state: 'attached' });
-    // await option.click()
-  // await embedConfigInput.selectOption("ERROR_PARSING");
-  // expect(await embedConfigInput.locator("option:checked").textContent()).toBe("ERROR_PARSING");
-    // console.log(await page.content())
-    // const option = page.locator('.select__menu-portal', { hasText: 'ERROR_PARSING' });
-    // await expect(option).toBeVisible();
-    // await option.click({force: true});
-    // await page.waitForLoadState("networkidle");
-
-    // const errorTag = page.locator('.select__multi-value__label', { hasText: 'ERROR_PARSING' });
-    // await errorTag.waitFor({ state: "visible" });
-    // await errorTag.click({ force: true });
-    // await page.waitForLoadState("networkidle");
-
-    // const errorRows = page.locator("table tbody tr");
-    // expect(await errorRows.count()).toBe(2);
-
-    // const headers = page.locator("table thead tr th");
-    // const headerTexts = await headers.allTextContents();
-    // const statusColIndex = headerTexts.findIndex(text => text.trim().startsWith(label));
-
-    // if (statusColIndex === -1) {
-    // throw new Error(`Header with label "${label}" not found`);
-    // }
-
-    // const rows = page.locator("table tbody tr");
-    // const statuses = await Promise.all(
-    //   (await rows.all()).map(async (row) => {
-    //     const cell = row.locator("td").nth(statusColIndex);
-    //     const text = await cell.innerText();
-    //     return text.trim();
-    //   })
-    // );
+    await expect(page.locator("text=Errors")).toBeVisible();
+    await expect(page.locator("text=Could not find a country code for 'Sp'ain'.")).toBeVisible();
   });
 
   test("The list validation before upload.", async ({ page }) => {
