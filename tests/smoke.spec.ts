@@ -541,7 +541,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(page.locator("#parent_company")).toHaveValue("");
 });
 
-test.describe("Home page search related tests", () => {
+test.describe("OSDEV-1232: Home page search combinations", () => {
   test("OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
     const { BASE_URL } = process.env;
 
@@ -668,7 +668,6 @@ test.describe("Home page search related tests", () => {
       page,
     }) => {
       const { BASE_URL } = process.env;
-
       await page.goto(BASE_URL!);
 
       // Open the country dropdown
@@ -723,7 +722,6 @@ test.describe("Home page search related tests", () => {
       page,
     }) => {
       const { BASE_URL } = process.env;
-
       await page.goto(BASE_URL!);
       await page.getByRole("button", { name: "Find Facilities" }).click();
       await page.waitForLoadState("networkidle");
@@ -793,28 +791,37 @@ test.describe("Home page search related tests", () => {
     });
   });
 
-  const workerRangesToTest = [
-    "Less than 1000",
-    "1001-5000",
-    "5001-10000",
-    "More than 10000",
+  const workerRangeTestCases = [
+    {
+      range: "Less than 1000",
+      min: 0,
+      max: 1000,
+    },
+    {
+      range: "1001-5000",
+      min: 1001,
+      max: 5000,
+    },
+    {
+      range: "5001-10000",
+      min: 5001,
+      max: 10000,
+    },
+    {
+      range: "More than 10000",
+      min: 10001,
+      max: Infinity,
+    },
   ];
 
-  const workerRangeBounds = {
-    "Less than 1000": { min: 0, max: 1000 },
-    "1001-5000": { min: 1001, max: 5000 },
-    "5001-10000": { min: 5001, max: 10000 },
-    "More than 10000": { min: 10001, max: Infinity },
-  };
-
-  workerRangesToTest.forEach((workerRange) => {
-    test(`OSDEV-1232: Facilities. Filter by Number of Workers - ${workerRange}`, async ({
+  workerRangeTestCases.forEach((testCase) => {
+    test(`OSDEV-1232: Facilities. Filter by Number of Workers - ${testCase.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
-
       await page.goto(BASE_URL!);
       await page.getByRole("button", { name: "Find Facilities" }).click();
+      await page.waitForLoadState("networkidle");
 
       // Open the NUMBER OF WORKERS dropdown
       const workersDropdown = page
@@ -825,11 +832,11 @@ test.describe("Home page search related tests", () => {
 
       // Fill and select the worker range
       const workersInput = workersDropdown.locator("input");
-      await workersInput.fill(workerRange);
+      await workersInput.fill(testCase.range);
 
       const option = page
         .locator("#NUMBER_OF_WORKERS div")
-        .filter({ hasText: workerRange })
+        .filter({ hasText: testCase.range })
         .first();
       await option.click();
       await page.keyboard.press("Enter");
@@ -840,17 +847,14 @@ test.describe("Home page search related tests", () => {
       });
       await searchButton.waitFor({ state: "visible" });
       await searchButton.click();
+      await page.waitForLoadState("networkidle");
 
       // Confirm that at least one result is shown
       const facilityLink = page.locator('a[href*="/facilities/"]').first();
       await facilityLink.scrollIntoViewIfNeeded();
       await facilityLink.waitFor({ state: "visible" });
-
-      // Click the first facility
-      await Promise.all([
-        page.waitForURL(/\/facilities\//),
-        facilityLink.click({ force: true }),
-      ]);
+      await facilityLink.click();
+      await page.waitForLoadState("networkidle");
 
       // Wait for main content to load
       const mainPanel = page.locator("#mainPanel");
@@ -873,8 +877,8 @@ test.describe("Home page search related tests", () => {
       );
       await slideOutPanel.waitFor({ state: "visible" });
 
-      // ✅ Extract all numbers and check if any fall within the expected range
-      const { min, max } = workerRangeBounds[workerRange];
+      // Extract all numbers and check if any fall within the expected range
+      const { min, max } = testCase;
       const texts = await slideOutPanel.locator("p").allTextContents();
 
       const monthRegex =
@@ -892,36 +896,47 @@ test.describe("Home page search related tests", () => {
     });
   });
 
-  const testCases = [
+  const combinedFilterTestCases = [
     {
       country: "United States",
       facilityType: "Final Product Assembly",
-      workerRange: "Less than 1000",
+      workerRange: {
+        range: "Less than 1000",
+        min: 0,
+        max: 1000,
+      },
     },
     {
       country: "United States",
       facilityType: "Textile or Material Production",
-      workerRange: "Less than 1000",
+      workerRange: {
+        range: "Less than 1000",
+        min: 0,
+        max: 1000,
+      },
     },
   ];
 
-  testCases.forEach(({ country, facilityType, workerRange }) => {
-    test(`OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange}`, async ({
+  combinedFilterTestCases.forEach(({ country, facilityType, workerRange }) => {
+    test(`OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
 
       await page.goto(BASE_URL!);
       await page.getByRole("button", { name: "Find Facilities" }).click();
+      await page.waitForLoadState("networkidle");
 
-      // --- COUNTRY filter ---
+      // COUNTRY filter
       const countryDropdown = page
         .locator("#COUNTRIES div")
         .filter({ hasText: "Select" })
         .nth(1);
       await countryDropdown.click();
+
       const countryInput = countryDropdown.locator("input");
       await countryInput.fill(country);
+
       const countryOption = page
         .locator("#COUNTRIES div")
         .filter({ hasText: country })
@@ -929,14 +944,16 @@ test.describe("Home page search related tests", () => {
       await countryOption.click();
       await page.keyboard.press("Enter");
 
-      // --- FACILITY TYPE filter ---
+      // FACILITY TYPE filter
       const typeDropdown = page
         .locator("#FACILITY_TYPE div")
         .filter({ hasText: "Select" })
         .first();
       await typeDropdown.click();
+
       const typeInput = typeDropdown.locator("input");
       await typeInput.fill(facilityType);
+
       const typeOption = page
         .locator("#FACILITY_TYPE div")
         .filter({ hasText: facilityType })
@@ -944,39 +961,39 @@ test.describe("Home page search related tests", () => {
       await typeOption.click();
       await page.keyboard.press("Enter");
 
-      // --- NUMBER OF WORKERS filter ---
+      // NUMBER OF WORKERS filter
       const workersDropdown = page
         .locator("#NUMBER_OF_WORKERS div")
         .filter({ hasText: "Select" })
         .first();
       await workersDropdown.click();
+
       const workersInput = workersDropdown.locator("input");
-      await workersInput.fill(workerRange);
+      await workersInput.fill(workerRange.range);
+
       const workersOption = page
         .locator("#NUMBER_OF_WORKERS div")
-        .filter({ hasText: workerRange })
+        .filter({ hasText: workerRange.range })
         .first();
       await workersOption.click();
       await page.keyboard.press("Enter");
 
-      // --- Click search ---
+      // Click search
       const searchButton = page.locator('button[type="submit"]', {
         hasText: /search/i,
       });
       await searchButton.waitFor({ state: "visible" });
       await searchButton.click();
+      await page.waitForLoadState("networkidle");
 
-      // --- Click the first facility link ---
+      // Click the first facility link
       const facilityLink = page.locator('a[href*="/facilities/"]').first();
       await facilityLink.scrollIntoViewIfNeeded();
       await facilityLink.waitFor({ state: "visible" });
+      await facilityLink.click();
+      await page.waitForLoadState("networkidle");
 
-      await Promise.all([
-        page.waitForURL(/\/facilities\//),
-        facilityLink.click({ force: true }),
-      ]);
-
-      // --- Expand and assert Facility Type ---
+      // Expand and assert Facility Type
       const mainPanel = page.locator("#mainPanel");
       await mainPanel.scrollIntoViewIfNeeded();
 
@@ -999,7 +1016,7 @@ test.describe("Home page search related tests", () => {
       );
       await page.getByRole("button", { name: "Close" }).click();
 
-      // --- Expand and assert Worker Range ---
+      // Expand and assert Worker Range
       const workersSection = page
         .locator("text=Number of workers")
         .first()
@@ -1017,7 +1034,7 @@ test.describe("Home page search related tests", () => {
 
       const monthRegex =
         /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
-      const { min, max } = workerRangeBounds[workerRange];
+      const { min, max } = workerRange;
       const workerTexts = await workersSlide.locator("p").allTextContents();
 
       const workerCount = workerTexts
@@ -1030,7 +1047,7 @@ test.describe("Home page search related tests", () => {
         `Expected a worker count between ${min} and ${max}, but none found.`
       ).toBeDefined();
 
-      // --- Assert country still appears ---
+      // Assert country still appears
       await expect(
         page.getByText(country, { exact: false }).first()
       ).toBeVisible();
