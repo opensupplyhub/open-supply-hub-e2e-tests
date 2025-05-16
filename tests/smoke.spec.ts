@@ -752,6 +752,7 @@ test.describe("Home page search related tests", () => {
       });
       await searchButton.waitFor({ state: "visible" });
       await searchButton.click();
+      await page.waitForLoadState("networkidle");
 
       // Assert the result page shows the selected facility type
       await expect(
@@ -762,6 +763,7 @@ test.describe("Home page search related tests", () => {
       const facilityLink = page.locator('a[href*="/facilities/"]').first();
       await facilityLink.scrollIntoViewIfNeeded();
       await facilityLink.waitFor({ state: "visible" });
+      await facilityLink.click();
 
       await page.waitForLoadState("networkidle");
 
