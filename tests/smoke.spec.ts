@@ -1241,4 +1241,40 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       })
     ).toBeVisible();
   });
+
+  test("A regular user does not have an access to the Moderation Queue page.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await page.waitForLoadState("networkidle");
+
+    // make sure that we can not open the Moderation queue page of Dashboard without authorization
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", {
+        name: "Sign in to view your Open Supply Hub Dashboard",
+      })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    // fill in login with regular user credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await expect(
+      page.getByRole("heading", { name: "Not found" })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", { name: "Dashboard / Moderation Queue" })
+        .getByRole("link")
+    ).not.toBeVisible();
+  });
 });
