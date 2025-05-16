@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
+import fs from "fs";
 
 test.beforeAll(setup);
 
@@ -1196,5 +1197,48 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     expect(dateValues.every((value) => value.indexOf("April") === 0)).toBe(
       true
     );
+
+    const pageSizeButton = await page.getByRole("button", { name: "25" });
+    await pageSizeButton.waitFor({ state: "visible" });
+    await pageSizeButton.scrollIntoViewIfNeeded();
+    await expect(page.locator("table tbody tr")).toHaveCount(25);
+    pageSizeButton.click();
+
+    const pageSize50 = await page.getByRole("option", { name: "50" });
+    await pageSize50.waitFor({ state: "visible" });
+    await pageSize50.click();
+    await waitResponse();
+    await expect(page.locator("table tbody tr")).toHaveCount(50);
+
+    const downloadButton = page.locator("button[aria-label='Download Excel']");
+    await expect(downloadButton).toBeVisible();
+    await expect(downloadButton).toBeEnabled();
+    downloadButton.click();
+
+    const downloadEvent = await page.waitForEvent("download");
+    const downloadPath = path.resolve(__dirname, "downloads");
+    const filePath = path.join(downloadPath, downloadEvent.suggestedFilename());
+
+    await downloadEvent.saveAs(filePath);
+    const fileExists = fs.existsSync(filePath);
+    expect(fileExists).toBe(true);
+
+    const fileName = path.basename(filePath);
+    expect(fileName).toBe("moderation_events.xlsx");
+
+    const moderationEvent = page.locator("table tbody tr:first-child");
+
+    await expect(moderationEvent).toBeVisible();
+    await expect(moderationEvent).toBeEnabled();
+    await moderationEvent.click();
+    const newPage = await page.context().waitForEvent("page");
+
+    await newPage.waitForLoadState("load");
+    expect(newPage.url()).toContain("/dashboard/moderation-queue/");
+    await expect(
+      newPage.getByRole("heading", {
+        name: "Dashboard / Moderation Queue / Contribution Record",
+      })
+    ).toBeVisible();
   });
 });
