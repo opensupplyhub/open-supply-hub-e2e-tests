@@ -1054,3 +1054,147 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     });
   });
 });
+
+test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager.", () => {
+  test("A moderator is able to work with the Moderation Queue page.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", {
+        name: "Sign in to view your Open Supply Hub Dashboard",
+      })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+    await page
+      .getByRole("textbox", { name: "Password" })
+      .fill(USER_ADMIN_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    const moderationQueueLink = page.getByRole("link", {
+      name: "Moderation Queue",
+    });
+    await expect(moderationQueueLink).toBeVisible();
+    await moderationQueueLink.click();
+
+    await expect(
+      page
+        .getByRole("heading", { name: "Dashboard / Moderation Queue" })
+        .getByRole("link")
+    ).toBeVisible();
+
+    async function waitResponse() {
+      const resp = await page.waitForResponse((resp) =>
+        resp.url().includes("/api/v1/moderation-events/")
+      );
+
+      expect(resp.status()).toBe(200);
+    }
+    await waitResponse();
+
+    async function chooseFilterOption(name: string, value: string) {
+      const dropdown = page
+        .locator(`label:has-text("${name}") + div div`)
+        .filter({ hasText: "Select" })
+        .nth(1);
+      await dropdown.click();
+
+      const input = dropdown.locator("input");
+      await input.fill(value);
+
+      const option = page
+        .locator(`label:has-text("${name}") + div div`)
+        .filter({ hasText: value })
+        .nth(1);
+      await option.click();
+      await page.keyboard.press("Enter");
+    }
+
+    async function getColumnValues(columnNumber: number): Promise<string[]> {
+      const cells = await page.locator(
+        `table tbody tr td:nth-child(${columnNumber})`
+      );
+      const values: string[] = [];
+
+      for (const cell of await cells.all()) {
+        const text = (await cell.textContent()) as string;
+        values.push(text);
+      }
+
+      return values;
+    }
+
+    async function clearFilterOption(name: string, value: string) {
+      const locator = await page.locator(
+        `label:has-text("${name}") + div div:has-text("${value}") + .select__multi-value__remove`
+      );
+      await locator.click();
+    }
+
+    await chooseFilterOption("Moderation Status", "APPROVED");
+    await waitResponse();
+
+    const statusValues = await getColumnValues(6);
+
+    expect(statusValues).toContain("APPROVED");
+    expect(statusValues).not.toContain("REJECTED");
+    expect(statusValues).not.toContain("PENDING");
+    expect(statusValues).toHaveLength(25);
+
+    await clearFilterOption("Moderation Status", "APPROVED");
+    await waitResponse();
+
+    await chooseFilterOption("Data Source", "API");
+    await waitResponse();
+    const sourceValues = await getColumnValues(5);
+
+    expect(sourceValues).toContain("API");
+    expect(sourceValues).not.toContain("SLC");
+    expect(sourceValues).toHaveLength(25);
+
+    await clearFilterOption("Data Source", "API");
+    await waitResponse();
+
+    await chooseFilterOption("Country", "Türkiye");
+    await waitResponse();
+    const countryValues = await getColumnValues(3);
+
+    expect(countryValues).toContain("Türkiye");
+    expect(countryValues).toHaveLength(25);
+    expect(countryValues.every((value) => value === "Türkiye")).toBe(true);
+
+    await clearFilterOption("Country", "Türkiye");
+    await waitResponse();
+
+    const beforeDateInput = await page.locator("#before-date");
+    beforeDateInput.fill("2025-04-30");
+    await page.keyboard.press("Enter");
+    await waitResponse();
+
+    const afterDateInput = await page.locator("#after-date");
+    afterDateInput.fill("2025-04-01");
+    await page.keyboard.press("Enter");
+    await waitResponse();
+
+    const dateValues = await getColumnValues(1);
+    expect(dateValues).toHaveLength(25);
+    expect(dateValues.every((value) => value.indexOf("April") === 0)).toBe(
+      true
+    );
+  });
+});
