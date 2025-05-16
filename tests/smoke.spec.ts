@@ -540,3 +540,498 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(page.locator("h2", { hasText: "Parent Company" })).toBeVisible();
   await expect(page.locator("#parent_company")).toHaveValue("");
 });
+
+test.describe("Home page search related tests", () => {
+  test("OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    // Navigate to the base URL
+    await page.goto(BASE_URL!);
+
+    // Define an invalid search query
+    const invalidSearchQuery = "invalid ABRACADABRA";
+
+    // Click on the search input field and fill it with the invalid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(invalidSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the facilities API call to return a 200 status
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the "No facilities matching this" message is visible
+    await expect(page.getByText("No facilities matching this")).toBeVisible();
+  });
+
+  test("OSDEV-1232: Facilities. Valid search", async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    // Navigate to the base URL
+    await page.goto(BASE_URL!);
+
+    // Define a valid search query
+    const validSearchQuery = "coffee factory";
+
+    // Click on the search input field and fill it with the valid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(validSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the facilities API call to return a 200 status
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
+
+    // Click the first facility link in the search results
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: "visible" });
+
+    // wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the facility page contains the search query
+    await expect(page.getByText(validSearchQuery).first()).toBeVisible();
+  });
+
+  test("OSDEV-1232: Facilities. OSID search", async ({ page }) => {
+    const { BASE_URL } = process.env;
+
+    // Navigate to the base URL
+    await page.goto(BASE_URL!);
+
+    // Define a valid search query
+    const validSearchQuery = "Car factory";
+
+    // Click on the search input field and fill it with the valid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(validSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
+
+    // Click the first facility link in the search results
+    const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: "visible" });
+    await facilityLink.click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Grab the OSID from the page
+    const paragraph = page.locator("p", { hasText: "OS ID: " });
+    await expect(paragraph).toBeVisible();
+    const osID = (await paragraph.locator("span").textContent()) as string;
+
+    // Navigate back to the search results
+    await page.getByRole("button", { name: "Back to search results" }).click();
+
+    // Perform a search using the copied OSID
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(osID);
+    await page.getByRole("button", { name: "Search" }).first().click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results contain the OSID
+    await expect(page.getByText(osID)).toBeVisible();
+  });
+
+  // Test for country search
+  const countryTestCases = [
+    "United States",
+    "Australia",
+    "United Kingdom",
+    "South Africa",
+  ];
+
+  countryTestCases.forEach((countryName) => {
+    test(`OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+
+      await page.goto(BASE_URL!);
+
+      // Open the country dropdown
+      const countryDropdown = page
+        .locator("#COUNTRIES div")
+        .filter({ hasText: "Select" })
+        .nth(1);
+      await countryDropdown.click();
+
+      // Type and select country
+      const countryInput = countryDropdown.locator("input");
+      await countryInput.fill(countryName);
+      const option = page
+        .locator("#COUNTRIES div")
+        .filter({ hasText: countryName })
+        .nth(1);
+      await option.click();
+      await page.keyboard.press("Enter");
+
+      // Click search
+      const searchButton = page.locator('button[type="submit"]', {
+        hasText: "Find Facilities",
+      });
+      await searchButton.waitFor({ state: "visible" });
+      await searchButton.click();
+
+      // Assert search result contains country name
+      await expect(page.getByText(countryName, { exact: true })).toBeVisible();
+
+      // Click first facility link
+      const facilityLink = page.locator('a[href*="/facilities/"]').first();
+      await facilityLink.scrollIntoViewIfNeeded();
+      await facilityLink.waitFor({ state: "visible" });
+
+      await page.waitForLoadState("networkidle");
+
+      // Assert facility page contains country name
+      const mainPanel = page.locator("#mainPanel");
+      await mainPanel.scrollIntoViewIfNeeded();
+      await expect(mainPanel).toContainText(countryName);
+    });
+  });
+
+  // Test for facility type search
+  const facilityTypeTestCases = [
+    "Final Product Assembly",
+    "Textile or Material Production",
+  ];
+
+  facilityTypeTestCases.forEach((facilityType) => {
+    test(`OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+
+      await page.goto(BASE_URL!);
+      await page.getByRole("button", { name: "Find Facilities" }).click();
+      await page.waitForLoadState("networkidle");
+
+      // Open the FACILITY TYPE dropdown
+      const typeDropdown = page
+        .locator("#FACILITY_TYPE div")
+        .filter({ hasText: "Select" })
+        .first();
+      await typeDropdown.click();
+
+      // Fill and select the facility type
+      const typeInput = typeDropdown.locator("input");
+      await typeInput.fill(facilityType);
+
+      const typeOption = page
+        .locator("#FACILITY_TYPE div")
+        .filter({ hasText: facilityType })
+        .first();
+      await typeOption.click();
+      await page.keyboard.press("Enter");
+
+      // Click the search button *after* selecting the filter
+      const searchButton = page.locator('button[type="submit"]', {
+        hasText: "Search",
+      });
+      await searchButton.waitFor({ state: "visible" });
+      await searchButton.click();
+
+      // Assert the result page shows the selected facility type
+      await expect(
+        page.getByText(new RegExp(facilityType, "i")).first()
+      ).toBeVisible();
+
+      // Click the first facility link
+      const facilityLink = page.locator('a[href*="/facilities/"]').first();
+      await facilityLink.scrollIntoViewIfNeeded();
+      await facilityLink.waitFor({ state: "visible" });
+
+      await page.waitForLoadState("networkidle");
+
+      // Scroll and wait for the panel
+      const mainPanel = page.locator("#mainPanel");
+      await mainPanel.scrollIntoViewIfNeeded();
+
+      // Click the "more entries" button inside the first "Facility Type" block
+      const facilityTypeSection = page
+        .locator("text=Facility Type")
+        .first()
+        .locator("xpath=../../..");
+      const moreButton = facilityTypeSection.locator(
+        'button:has-text("entries")'
+      );
+      await moreButton.click();
+
+      // Wait for the second "Facility Type" to appear (in slide-out)
+      const secondFacilityType = page.locator("text=Facility Type").nth(1);
+      const slideOutPanel = secondFacilityType.locator(
+        'xpath=ancestor::div[contains(@style, "translate")]'
+      );
+      await slideOutPanel.waitFor({ state: "visible" });
+
+      //  Assert the expected facility type is shown in the slide-out
+      await expect(slideOutPanel).toContainText(new RegExp(facilityType, "i"));
+    });
+  });
+
+  const workerRangesToTest = [
+    "Less than 1000",
+    "1001-5000",
+    "5001-10000",
+    "More than 10000",
+  ];
+
+  const workerRangeBounds = {
+    "Less than 1000": { min: 0, max: 1000 },
+    "1001-5000": { min: 1001, max: 5000 },
+    "5001-10000": { min: 5001, max: 10000 },
+    "More than 10000": { min: 10001, max: Infinity },
+  };
+
+  workerRangesToTest.forEach((workerRange) => {
+    test(`OSDEV-1232: Facilities. Filter by Number of Workers - ${workerRange}`, async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+
+      await page.goto(BASE_URL!);
+      await page.getByRole("button", { name: "Find Facilities" }).click();
+
+      // Open the NUMBER OF WORKERS dropdown
+      const workersDropdown = page
+        .locator("#NUMBER_OF_WORKERS div")
+        .filter({ hasText: "Select" })
+        .first();
+      await workersDropdown.click();
+
+      // Fill and select the worker range
+      const workersInput = workersDropdown.locator("input");
+      await workersInput.fill(workerRange);
+
+      const option = page
+        .locator("#NUMBER_OF_WORKERS div")
+        .filter({ hasText: workerRange })
+        .first();
+      await option.click();
+      await page.keyboard.press("Enter");
+
+      // Click the search button
+      const searchButton = page.locator('button[type="submit"]', {
+        hasText: /search/i,
+      });
+      await searchButton.waitFor({ state: "visible" });
+      await searchButton.click();
+
+      // Confirm that at least one result is shown
+      const facilityLink = page.locator('a[href*="/facilities/"]').first();
+      await facilityLink.scrollIntoViewIfNeeded();
+      await facilityLink.waitFor({ state: "visible" });
+
+      // Click the first facility
+      await Promise.all([
+        page.waitForURL(/\/facilities\//),
+        facilityLink.click({ force: true }),
+      ]);
+
+      // Wait for main content to load
+      const mainPanel = page.locator("#mainPanel");
+      await mainPanel.scrollIntoViewIfNeeded();
+
+      // Click the "more entries" button inside the first "Number of workers" section
+      const workersSection = page
+        .locator("text=Number of workers")
+        .first()
+        .locator("xpath=../../..");
+      const moreButton = workersSection.locator('button:has-text("entries")');
+      await moreButton.click();
+
+      // Wait for the slide-out panel
+      const secondWorkersSection = page
+        .locator("text=Number of workers")
+        .nth(1);
+      const slideOutPanel = secondWorkersSection.locator(
+        'xpath=ancestor::div[contains(@style, "translate")]'
+      );
+      await slideOutPanel.waitFor({ state: "visible" });
+
+      // ✅ Extract all numbers and check if any fall within the expected range
+      const { min, max } = workerRangeBounds[workerRange];
+      const texts = await slideOutPanel.locator("p").allTextContents();
+
+      const monthRegex =
+        /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+
+      const workerCount = texts
+        .filter((text) => !monthRegex.test(text)) // exclude potential date strings
+        .map((text) => parseInt(text.replace(/,/g, "").trim(), 10))
+        .find((num) => !isNaN(num) && num >= min && num <= max);
+
+      expect(
+        workerCount,
+        `Expected a worker count between ${min} and ${max}, but none found.`
+      ).toBeDefined();
+    });
+  });
+
+  const testCases = [
+    {
+      country: "United States",
+      facilityType: "Final Product Assembly",
+      workerRange: "Less than 1000",
+    },
+    {
+      country: "United States",
+      facilityType: "Textile or Material Production",
+      workerRange: "Less than 1000",
+    },
+  ];
+
+  testCases.forEach(({ country, facilityType, workerRange }) => {
+    test(`OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange}`, async ({
+      page,
+    }) => {
+      const { BASE_URL } = process.env;
+
+      await page.goto(BASE_URL!);
+      await page.getByRole("button", { name: "Find Facilities" }).click();
+
+      // --- COUNTRY filter ---
+      const countryDropdown = page
+        .locator("#COUNTRIES div")
+        .filter({ hasText: "Select" })
+        .nth(1);
+      await countryDropdown.click();
+      const countryInput = countryDropdown.locator("input");
+      await countryInput.fill(country);
+      const countryOption = page
+        .locator("#COUNTRIES div")
+        .filter({ hasText: country })
+        .nth(1);
+      await countryOption.click();
+      await page.keyboard.press("Enter");
+
+      // --- FACILITY TYPE filter ---
+      const typeDropdown = page
+        .locator("#FACILITY_TYPE div")
+        .filter({ hasText: "Select" })
+        .first();
+      await typeDropdown.click();
+      const typeInput = typeDropdown.locator("input");
+      await typeInput.fill(facilityType);
+      const typeOption = page
+        .locator("#FACILITY_TYPE div")
+        .filter({ hasText: facilityType })
+        .first();
+      await typeOption.click();
+      await page.keyboard.press("Enter");
+
+      // --- NUMBER OF WORKERS filter ---
+      const workersDropdown = page
+        .locator("#NUMBER_OF_WORKERS div")
+        .filter({ hasText: "Select" })
+        .first();
+      await workersDropdown.click();
+      const workersInput = workersDropdown.locator("input");
+      await workersInput.fill(workerRange);
+      const workersOption = page
+        .locator("#NUMBER_OF_WORKERS div")
+        .filter({ hasText: workerRange })
+        .first();
+      await workersOption.click();
+      await page.keyboard.press("Enter");
+
+      // --- Click search ---
+      const searchButton = page.locator('button[type="submit"]', {
+        hasText: /search/i,
+      });
+      await searchButton.waitFor({ state: "visible" });
+      await searchButton.click();
+
+      // --- Click the first facility link ---
+      const facilityLink = page.locator('a[href*="/facilities/"]').first();
+      await facilityLink.scrollIntoViewIfNeeded();
+      await facilityLink.waitFor({ state: "visible" });
+
+      await Promise.all([
+        page.waitForURL(/\/facilities\//),
+        facilityLink.click({ force: true }),
+      ]);
+
+      // --- Expand and assert Facility Type ---
+      const mainPanel = page.locator("#mainPanel");
+      await mainPanel.scrollIntoViewIfNeeded();
+
+      const facilityTypeSection = page
+        .locator("text=Facility Type")
+        .first()
+        .locator("xpath=../../..");
+      const moreTypeButton = facilityTypeSection.locator(
+        'button:has-text("entries")'
+      );
+      await moreTypeButton.click();
+
+      const facilityTypeSlide = page
+        .locator("text=Facility Type")
+        .nth(1)
+        .locator('xpath=ancestor::div[contains(@style, "translate")]');
+      await facilityTypeSlide.waitFor({ state: "visible" });
+      await expect(facilityTypeSlide).toContainText(
+        new RegExp(facilityType, "i")
+      );
+      await page.getByRole("button", { name: "Close" }).click();
+
+      // --- Expand and assert Worker Range ---
+      const workersSection = page
+        .locator("text=Number of workers")
+        .first()
+        .locator("xpath=../../..");
+      const moreWorkersButton = workersSection.locator(
+        'button:has-text("entries")'
+      );
+      await moreWorkersButton.click();
+
+      const workersSlide = page
+        .locator("text=Number of workers")
+        .nth(1)
+        .locator('xpath=ancestor::div[contains(@style, "translate")]');
+      await workersSlide.waitFor({ state: "visible" });
+
+      const monthRegex =
+        /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+      const { min, max } = workerRangeBounds[workerRange];
+      const workerTexts = await workersSlide.locator("p").allTextContents();
+
+      const workerCount = workerTexts
+        .filter((text) => !monthRegex.test(text))
+        .map((text) => parseInt(text.replace(/,/g, "").trim(), 10))
+        .find((num) => !isNaN(num) && num >= min && num <= max);
+
+      expect(
+        workerCount,
+        `Expected a worker count between ${min} and ${max}, but none found.`
+      ).toBeDefined();
+
+      // --- Assert country still appears ---
+      await expect(
+        page.getByText(country, { exact: false }).first()
+      ).toBeVisible();
+    });
+  });
+});
