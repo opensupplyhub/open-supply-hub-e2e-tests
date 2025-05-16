@@ -46,7 +46,7 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   page,
 }) => {
   const { BASE_URL } = process.env;
-  await page.goto(BASE_URL + "/admin/"!);
+  await page.goto(`${BASE_URL}/admin/`);
 
   // make sure that we are on the login page of Admin Dashboard
   const title = await page.title();
@@ -54,9 +54,9 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
 
   // fill in login credentials
-  const { USER_EMAIL, USER_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_EMAIL!);
-  await page.getByLabel("Password").fill(USER_PASSWORD!);
+  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await page.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Log In" }).click();
 
   // make sure that we have successfully logged in
@@ -82,7 +82,9 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
 
   // log the user out and make sure we are logged out
   await page.getByRole("link", { name: "Log out" }).click();
-  await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).not.toBeVisible();
+  await expect(
+    page.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)
+  ).not.toBeVisible();
   await expect(page.getByText("Log in again")).toBeVisible();
 });
 
@@ -1259,15 +1261,19 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
       })
       .click();
     await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
 
     // fill in login with regular user credentials
     const { USER_EMAIL, USER_PASSWORD } = process.env;
     await page.getByLabel("Email").fill(USER_EMAIL!);
     await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
     await page.getByRole("button", { name: "Log In" }).click();
-    await page.waitForLoadState("networkidle");
+    const resp = await page.waitForResponse(async (resp) =>
+      resp.url().includes("/user-login/")
+    );
+    expect(resp.status()).toBe(200);
 
-    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`);
     await expect(
       page.getByRole("heading", { name: "Not found" })
     ).toBeVisible();
