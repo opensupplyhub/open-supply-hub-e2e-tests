@@ -196,7 +196,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     const response = await page.waitForResponse(resp =>resp.url().includes("/api/facility-lists/") && resp.status() === 200);
 
     const json = await response.json();
-    const listId = json.id; // if the response includes the ID
+    const listId = json.id;
     await page.waitForLoadState("networkidle");
 
     const header = page.locator("h2", {
@@ -246,14 +246,14 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 
     await page.locator(`tr:has-text("${fileName}")`).first().click({ force: true });
 
-    // Poll is repeatedly check whether the result is ready, with timeouts to avoid hard waits.
+    // Poll repeatedly checks whether the result is ready, with timeouts to avoid hard waits.
     await expect.poll(async () => {
       const response = await page.request.get(`${BASE_URL}/api/facility-lists/${listId}/`);
       const data = await response.json();
 
       return data["statuses"].length;
     }, {
-      message: "/facility-lists/id return statuses(parsed)",
+      message: "/facility-lists/id return statuses (parsed)",
       intervals: [30000],
       timeout: 1600000
     }).not.toBe(0);
@@ -263,7 +263,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
       const data = await response.json();
       return data["count"];
     }, {
-      message: "/facility-lists/id return statuses(parsed)",
+      message: "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
       intervals: [30000],
       timeout: 1600000
     }).not.toBe(0);
@@ -283,7 +283,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(page.getByText( /Download submitted file/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
 
-    // Post uploading errors occurred while parsing your list.
+    // Post-uploading errors occurred while parsing your list.
     await page.waitForSelector(`h2:has-text("${listName}")`);
     await expect(
       page.getByRole("heading", { name: "List Status" })
