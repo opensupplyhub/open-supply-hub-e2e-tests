@@ -254,7 +254,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await page.waitForLoadState("networkidle");
 
     page
-      .locator('div.nav-item a.button:has-text("Add Data")')
+      .locator("div.nav-item a.button:has-text('Add Data')")
       .click({ force: true });
     await expect(
       page.getByRole("heading", {
@@ -315,8 +315,6 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await expect(adminPage.getByText("Open Supply Hub Admin")).toBeVisible();
 
   // fill in login credentials
-  await context.clearCookies();
-  await context.clearPermissions();
   const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
   await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
   await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
@@ -419,8 +417,22 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await width.fill("1000");
   const height = settingsPage.locator("input#height");
   await height.fill("1000");
-  await expect.poll( async () => {
-    const response = await settingsPage.request.post(`${BASE_URL}/api/embed-configs/`);
+
+  await expect.poll(async () => {
+    const csrfToken = (await settingsPage.context().cookies())
+      .find(cookie => cookie.name === "csrftoken")?.value;
+
+    const response = await settingsPage.request.post(`${BASE_URL}/api/embed-configs/`, {
+      headers: {
+        "X-CSRFToken": csrfToken || "",
+        "Accept": "application/json",
+        "Referer": `${BASE_URL}/`,
+      },
+      data: {
+        width: "100%",
+        height: "100",
+      },
+    });
 
     return response.status();
   }, {
@@ -435,14 +447,6 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await checkbox.click({ force: true });
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
-  await expect.poll( async () => {
-    const response = await settingsPage.request.get(`${BASE_URL}/api/embed-configs/`);
-
-    return response.status();
-  }, {
-    message: "GET /api/embed-configs/ succeeds",
-    timeout: 10000,
-  }).toBe(200);
   await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
 
   const frame = settingsPage.frameLocator("[id^='oar-embed-'] iframe");
@@ -451,14 +455,15 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   const texts = await frame.locator("ul.leaflet-draw-actions > li a").allTextContents();
   expect(texts).toEqual([ "Finish", "Delete last point", "Cancel" ]);
 
+  // 7. Check in the admin panel whether the Embed config is filled in.
   await adminPage.reload({ waitUntil: "networkidle" });
-  const rowLink = adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
-  await rowLink.click();
+  await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
   await adminPage.waitForLoadState("networkidle");
 
   await expect(adminPage.getByText("Change contributor")).toBeVisible();
   const configInput = adminPage.locator("#id_embed_config");
   expect(await configInput.locator("option:checked").textContent()).not.toBe("---------");
+  expect(await configInput.locator("option:checked").textContent()).toContain("100% x 100");
   const selectedValue = await configInput.locator("option:checked").getAttribute("value");
   expect(selectedValue).not.toBe("");
 });
