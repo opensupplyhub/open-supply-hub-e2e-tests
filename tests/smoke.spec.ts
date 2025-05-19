@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
+import fs from "fs";
 
 test.beforeAll(setup);
 
@@ -45,7 +46,7 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   page,
 }) => {
   const { BASE_URL } = process.env;
-  await page.goto(BASE_URL + "/admin/"!);
+  await page.goto(`${BASE_URL}/admin/`);
 
   // make sure that we are on the login page of Admin Dashboard
   const title = await page.title();
@@ -53,9 +54,9 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
   await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
 
   // fill in login credentials
-  const { USER_EMAIL, USER_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_EMAIL!);
-  await page.getByLabel("Password").fill(USER_PASSWORD!);
+  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await page.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Log In" }).click();
 
   // make sure that we have successfully logged in
@@ -81,7 +82,9 @@ test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", asy
 
   // log the user out and make sure we are logged out
   await page.getByRole("link", { name: "Log out" }).click();
-  await expect(page.getByText(`Welcome, ${USER_EMAIL}`)).not.toBeVisible();
+  await expect(
+    page.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)
+  ).not.toBeVisible();
   await expect(page.getByText("Log in again")).toBeVisible();
 });
 
@@ -1052,5 +1055,232 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         page.getByText(country, { exact: false }).first()
       ).toBeVisible();
     });
+  });
+});
+
+test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager.", () => {
+  test("A moderator is able to work with the Moderation Queue page.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", {
+        name: "Sign in to view your Open Supply Hub Dashboard",
+      })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+
+    const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+    await page
+      .getByRole("textbox", { name: "Password" })
+      .fill(USER_ADMIN_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "My Account" }).click();
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    const moderationQueueLink = page.getByRole("link", {
+      name: "Moderation Queue",
+    });
+    await expect(moderationQueueLink).toBeVisible();
+    await moderationQueueLink.click();
+
+    await expect(
+      page
+        .getByRole("heading", { name: "Dashboard / Moderation Queue" })
+        .getByRole("link")
+    ).toBeVisible();
+
+    async function waitResponse() {
+      const resp = await page.waitForResponse((resp) =>
+        resp.url().includes("/api/v1/moderation-events/")
+      );
+
+      expect(resp.status()).toBe(200);
+    }
+    await waitResponse();
+
+    async function chooseFilterOption(name: string, value: string) {
+      const dropdown = page
+        .locator(`label:has-text("${name}") + div div`)
+        .filter({ hasText: "Select" })
+        .nth(1);
+      await dropdown.click();
+
+      const input = dropdown.locator("input");
+      await input.fill(value);
+
+      const option = page
+        .locator(`label:has-text("${name}") + div div`)
+        .filter({ hasText: value })
+        .nth(1);
+      await option.click();
+      await page.keyboard.press("Enter");
+    }
+
+    async function getColumnValues(columnNumber: number): Promise<string[]> {
+      const cells = await page.locator(
+        `table tbody tr td:nth-child(${columnNumber})`
+      );
+      const values: string[] = [];
+
+      for (const cell of await cells.all()) {
+        const text = (await cell.textContent()) as string;
+        values.push(text);
+      }
+
+      return values;
+    }
+
+    async function clearFilterOption(name: string, value: string) {
+      const locator = await page.locator(
+        `label:has-text("${name}") + div div:has-text("${value}") + .select__multi-value__remove`
+      );
+      await locator.click();
+    }
+
+    await chooseFilterOption("Moderation Status", "APPROVED");
+    await waitResponse();
+
+    const statusValues = await getColumnValues(6);
+
+    expect(statusValues).toContain("APPROVED");
+    expect(statusValues).not.toContain("REJECTED");
+    expect(statusValues).not.toContain("PENDING");
+    expect(statusValues).toHaveLength(25);
+
+    await clearFilterOption("Moderation Status", "APPROVED");
+    await waitResponse();
+
+    await chooseFilterOption("Data Source", "API");
+    await waitResponse();
+    const sourceValues = await getColumnValues(5);
+
+    expect(sourceValues).toContain("API");
+    expect(sourceValues).not.toContain("SLC");
+    expect(sourceValues).toHaveLength(25);
+
+    await clearFilterOption("Data Source", "API");
+    await waitResponse();
+
+    await chooseFilterOption("Country", "Türkiye");
+    await waitResponse();
+    const countryValues = await getColumnValues(3);
+
+    expect(countryValues).toContain("Türkiye");
+    expect(countryValues).toHaveLength(25);
+    expect(countryValues.every((value) => value === "Türkiye")).toBe(true);
+
+    await clearFilterOption("Country", "Türkiye");
+    await waitResponse();
+
+    const beforeDateInput = await page.locator("#before-date");
+    beforeDateInput.fill("2025-04-30");
+    await page.keyboard.press("Enter");
+    await waitResponse();
+
+    const afterDateInput = await page.locator("#after-date");
+    afterDateInput.fill("2025-04-01");
+    await page.keyboard.press("Enter");
+    await waitResponse();
+
+    const dateValues = await getColumnValues(1);
+    expect(dateValues).toHaveLength(25);
+    expect(dateValues.every((value) => value.indexOf("April") === 0)).toBe(
+      true
+    );
+
+    const pageSizeButton = await page.getByRole("button", { name: "25" });
+    await pageSizeButton.waitFor({ state: "visible" });
+    await pageSizeButton.scrollIntoViewIfNeeded();
+    await expect(page.locator("table tbody tr")).toHaveCount(25);
+    pageSizeButton.click();
+
+    const pageSize50 = await page.getByRole("option", { name: "50" });
+    await pageSize50.waitFor({ state: "visible" });
+    await pageSize50.click();
+    await waitResponse();
+    await expect(page.locator("table tbody tr")).toHaveCount(50);
+
+    const downloadButton = page.locator("button[aria-label='Download Excel']");
+    await expect(downloadButton).toBeVisible();
+    await expect(downloadButton).toBeEnabled();
+    downloadButton.click();
+
+    const downloadEvent = await page.waitForEvent("download");
+    const downloadPath = path.resolve(__dirname, "downloads");
+    const filePath = path.join(downloadPath, downloadEvent.suggestedFilename());
+
+    await downloadEvent.saveAs(filePath);
+    const fileExists = fs.existsSync(filePath);
+    expect(fileExists).toBe(true);
+
+    const fileName = path.basename(filePath);
+    expect(fileName).toBe("moderation_events.xlsx");
+
+    const moderationEvent = page.locator("table tbody tr:first-child");
+
+    await expect(moderationEvent).toBeVisible();
+    await expect(moderationEvent).toBeEnabled();
+    await moderationEvent.click();
+    const newPage = await page.context().waitForEvent("page");
+
+    await newPage.waitForLoadState("load");
+    expect(newPage.url()).toContain("/dashboard/moderation-queue/");
+    await expect(
+      newPage.getByRole("heading", {
+        name: "Dashboard / Moderation Queue / Contribution Record",
+      })
+    ).toBeVisible();
+  });
+
+  test("A regular user does not have an access to the Moderation Queue page.", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
+    await page.waitForLoadState("networkidle");
+
+    // make sure that we can not open the Moderation queue page of Dashboard without authorization
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" })
+    ).toBeVisible();
+    await page
+      .getByRole("link", {
+        name: "Sign in to view your Open Supply Hub Dashboard",
+      })
+      .click();
+    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // fill in login with regular user credentials
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    const resp = await page.waitForResponse(async (resp) =>
+      resp.url().includes("/user-login/")
+    );
+    expect(resp.status()).toBe(200);
+
+    await page.goto(`${BASE_URL}/dashboard/moderation-queue/`);
+    await expect(
+      page.getByRole("heading", { name: "Not found" })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", { name: "Dashboard / Moderation Queue" })
+        .getByRole("link")
+    ).not.toBeVisible();
   });
 });
