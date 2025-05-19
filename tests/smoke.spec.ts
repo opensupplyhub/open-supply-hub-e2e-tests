@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
-import * as path from 'path';
-import * as fs from 'fs';
-import * as XLSX from 'xlsx';
+import * as path from "path";
+import * as fs from "fs";
+import ExcelJS, { Row, CellValue }  from "exceljs";
 
 test.beforeAll(setup);
 
@@ -196,23 +196,43 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     const fileName = path.basename(filePath);
     expect(fileName).toContain("facilities");
     expect(fileName).toContain(".xlsx");
-    const workbook = XLSX.readFile(filePath);
 
     // Get the first sheet
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+    async function readXlsx(filePath: string) {
+      const fileName = path.basename(filePath);
+      if (!fileName.endsWith(".xlsx")) throw new Error("Invalid file type");
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
 
-    // Convert sheet to JSON rows
-    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const rows: CellValue[][] = [];
+      if (workbook.worksheets.length === 0) {
+        throw new Error("Workbook contains no sheets");
+      }
 
-    // Get count of Facilities output on the  UI
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        throw new Error("First worksheet is null");
+      }
+
+      worksheet.eachRow((row: Row) => {
+        if (row.values && Array.isArray(row.values)) {
+          rows.push(row.values.slice(1));
+        }
+      });
+
+      return rows;
+    }
+
     const results = page.getByText(/^\d+ results$/);
     await expect(results).toBeVisible();
 
+    // Get count of Facilities output on the  UI
     const text = await results.textContent();
     const numberOfFacilities = parseInt(text?.match(/\d+/)?.[0] || "0", 10);
     const headerRow = 1;
 
-    expect(rows.length).toEqual(numberOfFacilities + headerRow);
+    await readXlsx(filePath).then(rows => {
+      expect(rows.length).toEqual(numberOfFacilities + headerRow);
+    });
   })
 });
