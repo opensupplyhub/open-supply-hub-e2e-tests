@@ -1,4 +1,4 @@
-import { test, expect, errors } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
@@ -183,10 +183,7 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
       .click();
 
     const fileInput = page.locator("input[type='file']");
-    const filePath = path.resolve(
-      __dirname,
-      `data/${fileName}`
-    );
+    const filePath = path.resolve(__dirname, `data/${fileName}`);
     await fileInput.setInputFiles(filePath);
     await expect(
       page.getByText(/DO_NOT_APPROVE test release\.csv/i)
@@ -196,10 +193,13 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await submitButton.scrollIntoViewIfNeeded();
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
-    const response = await page.waitForResponse(resp =>resp.url().includes("/api/facility-lists/") && resp.status() === 200);
+    const response = await page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/api/facility-lists/") && resp.status() === 200
+    );
 
-    const json = await response.json();
-    const listId = json.id;
+    const data = await response.json();
+    const listId = data.id;
     await page.waitForLoadState("networkidle");
 
     const header = page.locator("h2", {
@@ -220,9 +220,10 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await page.getByRole("link", { name: "My Lists" }).click();
     await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
 
-
     // Uploaded list is visible on My Lists page
-    await page.waitForSelector("table tbody tr:first-child", { timeout: 10000 });
+    await page.waitForSelector("table tbody tr:first-child", {
+      timeout: 10000,
+    });
     const row = page.locator("table tbody tr:first-child");
     await expect(row).toBeVisible();
 
@@ -247,29 +248,46 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
       await expect(row.locator("td").nth(index)).toHaveText(column.value);
     }
 
-    await page.locator(`tr:has-text("${fileName}")`).first().click({ force: true });
+    await page
+      .locator(`tr:has-text("${fileName}")`)
+      .first()
+      .click({ force: true });
 
     // Poll repeatedly checks whether the result is ready, with timeouts to avoid hard waits.
-    await expect.poll(async () => {
-      const response = await page.request.get(`${BASE_URL}/api/facility-lists/${listId}/`);
-      const data = await response.json();
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(
+            `${BASE_URL}/api/facility-lists/${listId}/`
+          );
+          const data = await response.json();
+          return data["statuses"].length;
+        },
+        {
+          message: "/facility-lists/id return statuses (parsed)",
+          intervals: [30000],
+          timeout: 1600000,
+        }
+      )
+      .not.toBe(0);
 
-      return data["statuses"].length;
-    }, {
-      message: "/facility-lists/id return statuses (parsed)",
-      intervals: [30000],
-      timeout: 1600000
-    }).not.toBe(0);
-
-    await expect.poll(async () => {
-      const response = await page.request.get(`${BASE_URL}/api/facility-lists/${listId}/items/?page=1&pageSize=20/`);
-      const data = await response.json();
-      return data["count"];
-    }, {
-      message: "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
-      intervals: [30000],
-      timeout: 1600000
-    }).not.toBe(0);
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(
+            `${BASE_URL}/api/facility-lists/${listId}/items/?page=1&pageSize=20/`
+          );
+          const data = await response.json();
+          return data["count"];
+        },
+        {
+          message:
+            "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
+          intervals: [30000],
+          timeout: 1600000,
+        }
+      )
+      .not.toBe(0);
 
     await page.goto(`${BASE_URL}/lists/${listId}`);
     await page.waitForLoadState("networkidle");
@@ -279,31 +297,37 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     await expect(
       page.getByRole("heading", { name: "List Status" })
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "PENDING" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "PENDING" })
+      page.getByRole("button", { name: /Download formatted file/i })
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
-    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+    await expect(page.getByText(/Download submitted file/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Back to lists/i })
+    ).toBeVisible();
 
     // Post-uploading errors occurred while parsing your list.
     await page.waitForSelector(`h2:has-text("${listName}")`);
     await expect(
       page.getByRole("heading", { name: "List Status" })
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "PENDING" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "PENDING" })
+      page.getByRole("button", { name: /Download formatted file/i })
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: /Download formatted file/i })).toBeVisible();
-    await expect(page.getByText( /Download submitted file/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+    await expect(page.getByText(/Download submitted file/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Back to lists/i })
+    ).toBeVisible();
     await page.evaluate(() => {
       window.scrollBy(0, 100); // scroll down 100px
     });
 
     await page.locator(".select__value-container").click();
     await page.locator(".select__option:has-text('ERROR_PARSING')").click();
-    await expect(page.locator(".select__multi-value__label")).toHaveText(/ERROR_PARSING/);
+    await expect(page.locator(".select__multi-value__label")).toHaveText(
+      /ERROR_PARSING/
+    );
     await page.waitForLoadState("networkidle");
 
     const errorRows = page.locator("table tbody tr");
@@ -314,7 +338,9 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     });
 
     await expect(page.locator("text=Errors")).toBeVisible();
-    await expect(page.locator("text=Could not find a country code for 'Sp'ain'.")).toBeVisible();
+    await expect(
+      page.locator("text=Could not find a country code for 'Sp'ain'.")
+    ).toBeVisible();
   });
 
   test("The list validation before upload.", async ({ page }) => {
