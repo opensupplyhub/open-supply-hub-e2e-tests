@@ -149,7 +149,8 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
   test.describe(`${format === "CSV" ? "OSDEV-1230" : "OSDEV-1231"}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
     test(`Successful list uploading in ${format} format.`, async ({ page }) => {
       test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
-      const { BASE_URL } = process.env;
+      const { BASE_URL, VERSION_TAG } = process.env;
+      console.log(`VERSION_TAG: ${VERSION_TAG}`);
       await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
       await expect(
