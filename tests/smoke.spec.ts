@@ -3,6 +3,7 @@ import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
 import fs from "fs";
+import os from "os";
 
 test.beforeAll(setup);
 
@@ -149,8 +150,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
   test.describe(`${format === "CSV" ? "OSDEV-1230" : "OSDEV-1231"}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
     test(`Successful list uploading in ${format} format.`, async ({ page }) => {
       test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
-      const { BASE_URL, VERSION_TAG } = process.env;
-      console.log(`VERSION_TAG: ${VERSION_TAG}`);
+      const { BASE_URL, VERSION_TAG="v0.0.0" } = process.env;
       await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
       await expect(
@@ -186,8 +186,8 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
 
       // Fill in the form fields
       const nameInput = page.getByLabel("Enter the name for this facility list");
-      await nameInput.fill(listName);
-      await expect(nameInput).toHaveValue(listName);
+      await nameInput.fill(`${listName} ${VERSION_TAG}`);
+      await expect(nameInput).toHaveValue(`${listName} ${VERSION_TAG}`);
 
 
       const descriptionInput = page.getByLabel(
@@ -200,11 +200,21 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         .getByRole("button", { name: /select facility list file/i })
         .click();
 
+      // Original path
+      const originalFilePath = path.resolve(__dirname, `data/${fileName}`);
+      const newFileName = `${path.parse(fileName).name} ${VERSION_TAG}${path.extname(fileName)}`;
+
+      // Temp file path (in system temp dir)
+      const tempFilePath = path.join(os.tmpdir(), newFileName);
+
+      // Copy original file to new temp file with new name
+      fs.copyFileSync(originalFilePath, tempFilePath);
+
+      // Upload renamed temp file
       const fileInput = page.locator("input[type='file']");
-      const filePath = path.resolve(__dirname, `data/${fileName}`);
-      await fileInput.setInputFiles(filePath);
+      await fileInput.setInputFiles(tempFilePath);
       await expect(
-        page.getByText(new RegExp(fileName, "i"))
+        page.getByText(new RegExp(newFileName, "i"))
       ).toBeVisible();
 
       // Submit the form
@@ -216,6 +226,9 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         (resp) =>
           resp.url().includes("/api/facility-lists/") && resp.status() === 200
       );
+
+      // Delete temp file
+      fs.unlinkSync(tempFilePath);
 
       // Get the list ID
       const data = await response.json();
@@ -251,7 +264,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       const columns = [
         {
           name: "Name",
-          value: listName,
+          value: `${listName} ${VERSION_TAG}`,
         },
         {
           name: "Description",
@@ -259,7 +272,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         },
         {
           name: "File Name",
-          value: fileName,
+          value: newFileName,
         },
       ];
 
@@ -269,7 +282,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       }
 
       await page
-        .locator(`tr:has-text("${fileName}")`)
+        .locator(`tr:has-text("${listName} ${VERSION_TAG}")`)
         .first()
         .click({ force: true });
 
@@ -313,7 +326,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       await page.waitForLoadState("networkidle");
 
       // Post uploading errors occurred while parsing your list.
-      await page.waitForSelector(`h2:has-text("${listName}")`);
+      await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
       await expect(
         page.getByRole("heading", { name: "List Status" })
       ).toBeVisible();
@@ -327,7 +340,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       ).toBeVisible();
 
       // Post-uploading errors occurred while parsing your list.
-      await page.waitForSelector(`h2:has-text("${listName}")`);
+      await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
       await expect(
         page.getByRole("heading", { name: "List Status" })
       ).toBeVisible();
