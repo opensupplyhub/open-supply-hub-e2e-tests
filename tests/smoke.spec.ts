@@ -160,12 +160,14 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         .click();
       await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 
+      // Log in to the main page
       const { USER_EMAIL, USER_PASSWORD } = process.env;
       await page.getByLabel("Email").fill(USER_EMAIL!);
       await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
       await page.getByRole("button", { name: "Log In" }).click();
       await page.waitForLoadState("networkidle");
 
+      // Navigate to Upload Multiple Locations page
       const addDataText = "Add Data";
       page
         .locator(`div.nav-item a.button:has-text("${addDataText}")`)
@@ -181,9 +183,11 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         .click();
       await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
 
+      // Fill in the form fields
       const nameInput = page.getByLabel("Enter the name for this facility list");
       await nameInput.fill(listName);
       await expect(nameInput).toHaveValue(listName);
+
 
       const descriptionInput = page.getByLabel(
         "Enter a description of this facility list and include a timeframe for the list's validity"
@@ -202,6 +206,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         page.getByText(new RegExp(fileName, "i"))
       ).toBeVisible();
 
+      // Submit the form
       const submitButton = page.getByRole("button", { name: /submit/i });
       await submitButton.scrollIntoViewIfNeeded();
       await expect(submitButton).toBeEnabled();
@@ -211,6 +216,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
           resp.url().includes("/api/facility-lists/") && resp.status() === 200
       );
 
+      // Get the list ID
       const data = await response.json();
       const listId = data.id;
       await page.waitForLoadState("networkidle");
@@ -344,7 +350,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       await page.waitForLoadState("networkidle");
 
       const errorRows = page.locator("table tbody tr");
-      expect(await errorRows.count()).toBe(1);
+      expect(await errorRows.count()).toBe(format === "CSV" ? 1 : 2);
       await errorRows.click();
       await page.evaluate(() => {
         window.scrollBy(0, 100); // scroll down 100px
@@ -352,7 +358,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
 
       await expect(page.locator("text=Errors")).toBeVisible();
       await expect(
-        page.locator("text=Could not find a country code for 'Sp'ain'.")
+        page.locator(`text=Could not find a country code for ${format === "CSV" ? "'Sp'ain'" : "'A'ustralia'"}.`)
       ).toBeVisible();
     });
 
@@ -375,6 +381,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       await page.getByRole("button", { name: "Log In" }).click();
       await page.waitForLoadState("networkidle");
 
+      // Navigate to Upload Multiple Locations page
       const addDataText = "Add Data";
       page
         .locator(`div.nav-item a.button:has-text("${addDataText}")`)
@@ -395,6 +402,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
       await expect(submitButton).toBeEnabled();
       await submitButton.click();
 
+      // Check that the error messages are visible
       await expect(
         page.locator(".form__field", {
           hasText: "Missing required Facility List Name.",
@@ -406,6 +414,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description }) => {
         })
       ).toBeVisible();
 
+      // Fill in the form fields with invalid values
       const nameInput = page.getByLabel("Enter the name for this facility list");
       await nameInput.fill('Test name!@@%^^&*()":,./ CO. LTD');
       await expect(nameInput).toHaveValue('Test name!@@%^^&*()":,./ CO. LTD');
