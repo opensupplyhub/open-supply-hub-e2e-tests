@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import { downloadSheetToTempFile } from './utils/downloadSheetToTempFile';
 import path from "path";
 
 test.beforeAll(setup);
@@ -296,4 +297,16 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
   });
 });
 
-test.describe("OSDEV-1275: Playwright tests - (prod-only) EM user can... See EM working properly at their websites", () => {});
+test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", async() => {
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
+  const SHEET_ID = '1bi6dIsC4h2064Z1gUWkL7ic6mf0B81Lr';
+  const GID = '1422903340';
+  const tempFilePath = await downloadSheetToTempFile(SHEET_ID, GID);
+  // await page.locator("input[type='file']").setInputFiles(tempFilePath);
+
+  // // run test steps...
+
+  // await fs.unlink(tempFilePath); // delete after use
+});
