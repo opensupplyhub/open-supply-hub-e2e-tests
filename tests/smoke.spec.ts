@@ -1330,10 +1330,10 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     const filePath = path.join(downloadPath, downloadEvent.suggestedFilename());
 
     await downloadEvent.saveAs(filePath);
-    const fileExists = fs.existsSync(filePath);
-    expect(fileExists).toBe(true);
 
+    const fileExists = fs.existsSync(filePath);
     const fileName = path.basename(filePath);
+    expect(fileExists).toBe(true);
     expect(fileName).toBe("moderation_events.xlsx");
 
     const moderationEvent = page.locator("table tbody tr:first-child");
@@ -1406,15 +1406,15 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     await page.waitForLoadState("networkidle");
 
     const downloadButton = page.getByRole("button", { name: "Download" });
-    expect(downloadButton).toBeVisible();
-    expect(downloadButton).toBeEnabled();
-    downloadButton.click({ force: true });
+    await expect(downloadButton).toBeVisible();
+    await expect(downloadButton).toBeEnabled();
+    await downloadButton.click({ force: true });
     await page.waitForLoadState("networkidle");
 
     // Check that the menu item is visible
     const menuItem = page.getByRole("menuitem", { name: "Excel" });
     await expect(menuItem).toBeVisible();
-    menuItem.click({ force: true });
+    await menuItem.click({ force: true });
 
     // Check that the login pop-up is visible
     await expect(page.getByRole("heading", { name: "Log In To Download" })).toBeVisible();
@@ -1429,56 +1429,34 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     // Log in to the main page
     const { BASE_URL } = process.env;
     await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
-    page.getByRole("button", { name: "Download" }).click({ force: true });
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
 
     // Check that the menu item is visible
     const menuItem = page.getByRole("menuitem", { name: "Excel" });
     await expect(menuItem).toBeVisible();
-    menuItem.click({ force: true });
+    await menuItem.click({ force: true });
 
     // Log in to the main page
-    page.getByRole("button", { name: "LOG IN" }).click();
+    await page.getByRole("button", { name: "LOG IN" }).click();
     const { USER_EMAIL, USER_PASSWORD } = process.env;
     await page.getByLabel("Email").fill(USER_EMAIL!);
     await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
     await page.getByRole("button", { name: "Log In" }).click();
-    page.getByRole("button", { name: "Download" }).click({ force: true });
-    page.getByRole("menuitem", { name: "Excel" }).click({ force: true });
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
+    await page.getByRole("menuitem", { name: "Excel" }).click({ force: true });
 
     // Download the file
     const downloadPath = path.resolve(__dirname, "downloads");
-    const downloadPromise = page.waitForEvent("download");
-    const download = await downloadPromise;
+    const download = await page.waitForEvent("download");
     const filePath = path.join(downloadPath, download.suggestedFilename());
     await download.saveAs(filePath);
+
     const fileExists = fs.existsSync(filePath);
     const fileName = path.basename(filePath);
-
     expect(fileExists).toBe(true);
     expect(fileName).toContain("facilities");
     expect(fileName).toContain(".xlsx");
 
-    // Get the first sheet
-    async function readXlsx(filePath: string) {
-      const fileName = path.basename(filePath);
-      if (!fileName.endsWith(".xlsx")) throw new Error("Invalid file type");
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-      const rows: CellValue[][] = [];
-      if (workbook.worksheets.length === 0) {
-        throw new Error("Workbook contains no sheets");
-      }
-      const worksheet = workbook.worksheets[0];
-      if (!worksheet) {
-        throw new Error("First worksheet is null");
-      }
-      worksheet.eachRow((row: Row) => {
-        if (row.values && Array.isArray(row.values)) {
-          rows.push(row.values.slice(1));
-        }
-      });
-      return rows;
-    }
     // Check that the number of facilities is visible
     const results = page.getByText(/^\d+ results$/);
     await expect(results).toBeVisible();
@@ -1488,9 +1466,24 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     const numberOfFacilities = parseInt(text?.match(/\d+/)?.[0] || "0", 10);
     const headerRow = 1;
 
-    // Check that the number of facilities is correct
-    await readXlsx(filePath).then(rows => {
-      expect(rows.length).toEqual(numberOfFacilities + headerRow);
+    // Get the first sheet
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const rows: CellValue[][] = [];
+    if (workbook.worksheets.length === 0) {
+      throw new Error("Workbook contains no sheets");
+    }
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error("First worksheet is null");
+    }
+    worksheet.eachRow((row: Row) => {
+      if (row.values && Array.isArray(row.values)) {
+        rows.push(row.values.slice(1));
+      }
     });
+
+    // Check that the number of facilities is correct
+    expect(rows.length).toEqual(numberOfFacilities + headerRow);
   })
 });
