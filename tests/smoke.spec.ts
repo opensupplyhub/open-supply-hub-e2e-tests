@@ -1,7 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, chromium, Frame } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
-import { downloadSheetToTempFile } from './utils/downloadSheetToTempFile';
 import path from "path";
 
 test.beforeAll(setup);
@@ -296,17 +295,60 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
     ).toBeVisible();
   });
 });
+test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
+  test("Check embedded maps on partner websites", async ({ page }) => {
+    console.log(process.env.ENVIRONMENT);
+    // if (process.env.ENVIRONMENT !== "test") {
+    //   test.skip(true, "Only runs in Production environment");
+    // }
+    const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
+    const context = await browser.newContext();
+    // Company name = link to the site
+    const linksToSitesWhereCheckEM = {
+      "Nordstrom":"https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
+      "Levis":"https://www.levistrauss.com/sustainability-report/community/supplier-map/",
+      "Columbia Sportswear Company":"https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/",
+      "ASOS":"https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/",
+      "ZEEMAN":"https://www.zeeman.com/factory", //NO MAP!!! 404
+      "Amazon":"https://sustainability.aboutamazon.com/human-rights/supply-chain",
+    }
+    const pages = {};
+    for (const [company, link] of Object.entries(linksToSitesWhereCheckEM)) {
+      pages[`${company}Page`]= await context.newPage();
+      await pages[`${company}Page`].goto(link);
+      await pages[`${company}Page`].waitForLoadState("networkidle");
 
-test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", async() => {
-  if (process.env.ENVIRONMENT !== "production") {
-    test.skip(true, "Only runs in Production environment");
+      const iframeElements = await page.$$('iframe'); // get all iframe elements
+
+      let embeddedMapFrame: Frame | null = null;
+      for (const iframeElement of iframeElements) {
+        const title = await iframeElement.getAttribute('title');
+        if (title === 'embedded-map') {
+          // Scroll iframe element into view if needed
+          await iframeElement.scrollIntoViewIfNeeded();
+
+          // Get the Frame object to interact inside iframe
+          embeddedMapFrame = await iframeElement.contentFrame();
+
+          // You cannot do expect on Frame, but you can check visibility of iframe element:
+          await expect(page.locator('iframe[title="embedded-map"]')).toBeVisible();
+
+
+          break;
+        }
+      }
+      if (!embeddedMapFrame) {
+        throw new Error('iframe with title="embedded-map" not found');
+      }
+
+      const drawButton = embeddedMapFrame.getByRole('button', { name: 'DRAW CUSTOM AREA' });
+      const zoomButton = embeddedMapFrame.getByRole('button', { name: 'Zoom to Search' });
+      await expect(drawButton).toBeVisible();
+      await expect(zoomButton).toBeVisible();
+
+      await pages[`${company}Page`].close();
   }
-  const SHEET_ID = '1bi6dIsC4h2064Z1gUWkL7ic6mf0B81Lr';
-  const GID = '1422903340';
-  const tempFilePath = await downloadSheetToTempFile(SHEET_ID, GID);
-  // await page.locator("input[type='file']").setInputFiles(tempFilePath);
-
-  // // run test steps...
-
-  // await fs.unlink(tempFilePath); // delete after use
+  await context.close();
+  await browser.close();
+  });
 });
