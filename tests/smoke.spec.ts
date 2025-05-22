@@ -1235,6 +1235,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .nth(1);
       await option.click();
       await page.keyboard.press("Enter");
+      await page.waitForLoadState("networkidle");
     }
 
     async function getColumnValues(columnNumber: number): Promise<string[]> {
