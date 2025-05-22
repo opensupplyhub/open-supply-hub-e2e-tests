@@ -506,7 +506,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+  await expect(page.locator("#name")).toContainText(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -1193,7 +1193,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: "My Account" }).click();
-    await page.getByRole("link", { name: "Dashboard" }).click();
+    await page.locator("#nav").getByRole("link", { name: "Dashboard" }).click();
     await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
