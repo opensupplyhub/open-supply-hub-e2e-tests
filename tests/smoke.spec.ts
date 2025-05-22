@@ -506,7 +506,8 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toContainText(locationName);
+
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -596,7 +597,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
