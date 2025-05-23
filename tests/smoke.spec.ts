@@ -298,9 +298,9 @@ test.describe("OSDEV-1230: Smoke: Facilities. Upload a list in CSV format.", () 
 });
 
 test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
-  // if (process.env.ENVIRONMENT !== "production") {
-  //   test.skip(true, "Only runs in Production environment");
-  // }
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
   // Company name = link to the site
   const linksToSitesWhereCheckEM = {
     "Nordstrom":"https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
