@@ -1,4 +1,4 @@
-import { test, expect} from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import { takeAndSaveScreenshot } from "./utils/helpers";
@@ -307,7 +307,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
     "Levis":"https://www.levistrauss.com/sustainability-report/community/supplier-map/",
     "Columbia Sportswear Company":"https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/",
     "ASOS":"https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/",
-    "ZEEMAN":"https://www.zeeman.com/factory", //NO MAP!!! 404
+    "ZEEMAN":"https://www.zeeman.com/factory",
     "Amazon":"https://sustainability.aboutamazon.com/human-rights/supply-chain",
   }
 
