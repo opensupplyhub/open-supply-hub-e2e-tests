@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import { takeAndSaveScreenshot } from "./utils/helpers";
 import path from "path";
 import fs from "fs";
 
@@ -1390,4 +1391,63 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .getByRole("link")
     ).not.toBeVisible();
   });
+});
+
+test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
+  // Company name = link to the site
+  const linksToSitesWhereCheckEM = {
+    "Nordstrom":"https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
+    "Levis":"https://www.levistrauss.com/sustainability-report/community/supplier-map/",
+    "Columbia Sportswear Company":"https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/",
+    "ASOS":"https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/",
+    "ZEEMAN":"https://www.zeeman.com/factory",
+    "Amazon":"https://sustainability.aboutamazon.com/human-rights/supply-chain",
+  }
+
+  for (const [company, link] of Object.entries(linksToSitesWhereCheckEM)) {
+    test(`Check embedded maps on ${company} website.`, async ({ page }) => {
+      await page.goto(link, { waitUntil: "networkidle" });
+      await page.waitForLoadState("load"); // fires when all resources are loaded
+      await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
+
+
+      let foundEmbedMapElements = false;
+      // get all iframe elements
+      const iframeElements = await page.$$("iframe");
+
+      // Check all iframes for embedded map elements
+      for (const iframeElement of iframeElements) {
+        const frame = await iframeElement.contentFrame();
+        if (!frame) continue;
+
+          const drawButton = frame.getByRole("button", { name: "DRAW CUSTOM AREA" });
+          const zoomButton = frame.getByRole("button", { name: "Zoom to Search" });
+          const copyLinkButton = frame.getByRole("button", { name: "Copy Link" });
+          const downloadButton = frame.getByRole("button", { name: "Download" });
+          const facilityText = frame.getByRole("heading", { name: "Facilities" });
+
+          await drawButton.isVisible();
+          await zoomButton.isVisible();
+          await copyLinkButton.isVisible();
+          await downloadButton.isVisible();
+          await facilityText.isVisible();
+
+          if (drawButton && zoomButton && copyLinkButton && downloadButton && facilityText) {
+            foundEmbedMapElements = true;
+            break;
+          }
+      }
+
+    if (!foundEmbedMapElements) {
+      const { VERSION_TAG = "v0.0.0" } = process.env;
+      const fileName = `${company}-${VERSION_TAG}`;
+
+      takeAndSaveScreenshot(fileName, page);
+    }
+      expect(foundEmbedMapElements).toBeTruthy();
+    });
+  }
 });
