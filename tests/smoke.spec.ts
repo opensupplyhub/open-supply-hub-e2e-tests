@@ -133,12 +133,14 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
 
 const uploadScenarios = [
   {
+    testCaseID: "OSDEV-1230",
     format: "CSV",
     fileName: "DO_NOT_APPROVE test release.csv",
     listName: "DO NOT APPROVE test release CSV",
     description: "DO NOT APPROVE Test CSV upload",
   },
   {
+    testCaseID: "OSDEV-1231",
     format: "XLSX",
     fileName: "DO_NOT_APPROVE test release.xlsx",
     listName: "DO NOT APPROVE test release XLSX",
@@ -146,8 +148,8 @@ const uploadScenarios = [
   },
 ];
 
-uploadScenarios.forEach(({ format, fileName, listName, description }) => {
-  test.describe(`${format === "CSV" ? "OSDEV-1230" : "OSDEV-1231"}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
+uploadScenarios.forEach(({ format, fileName, listName, description, testCaseID }) => {
+  test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
     test(`Successful list uploading in ${format} format.`, async ({ page }) => {
       test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
       const { BASE_URL, VERSION_TAG="v0.0.0" } = process.env;
