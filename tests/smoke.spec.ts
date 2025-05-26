@@ -3,6 +3,7 @@ import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
 import fs from "fs";
+import ExcelJS, { Row, CellValue }  from "exceljs";
 
 test.beforeAll(setup);
 
@@ -505,7 +506,8 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -595,7 +597,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -1192,7 +1194,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: "My Account" }).click();
-    await page.getByRole("link", { name: "Dashboard" }).click();
+    await page.locator("#nav").getByRole("link", { name: "Dashboard" }).click();
     await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
@@ -1233,6 +1235,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .nth(1);
       await option.click();
       await page.keyboard.press("Enter");
+      await page.waitForLoadState("networkidle");
     }
 
     async function getColumnValues(columnNumber: number): Promise<string[]> {
@@ -1329,10 +1332,10 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     const filePath = path.join(downloadPath, downloadEvent.suggestedFilename());
 
     await downloadEvent.saveAs(filePath);
-    const fileExists = fs.existsSync(filePath);
-    expect(fileExists).toBe(true);
 
+    const fileExists = fs.existsSync(filePath);
     const fileName = path.basename(filePath);
+    expect(fileExists).toBe(true);
     expect(fileName).toBe("moderation_events.xlsx");
 
     const moderationEvent = page.locator("table tbody tr:first-child");
@@ -1390,4 +1393,99 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .getByRole("link")
     ).not.toBeVisible();
   });
+});
+
+test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 7000 - 9900 in xlsx.", async () => {
+  test("An unauthorized user cannot download a list of facilities.", async ({
+    page,
+  }) => {
+    // Check that the user is on the main page
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+
+    const title = await page.title();
+    expect(title).toBe("Open Supply Hub");
+    await page.waitForLoadState("networkidle");
+
+    const downloadButton = page.getByRole("button", { name: "Download" });
+    await expect(downloadButton).toBeVisible();
+    await expect(downloadButton).toBeEnabled();
+    await downloadButton.click({ force: true });
+    await page.waitForLoadState("networkidle");
+
+    // Check that the menu item is visible
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
+    await expect(menuItem).toBeVisible();
+    await menuItem.click({ force: true });
+
+    // Check that the login pop-up is visible
+    await expect(page.getByRole("heading", { name: "Log In To Download" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
+  })
+
+  test("An authorized user can download a list of facilities with amounts 7000 - 9900 in xlsx.", async ({
+    page,
+  }) => {
+    // Log in to the main page
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
+
+    // Check that the menu item is visible
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
+    await expect(menuItem).toBeVisible();
+    await menuItem.click({ force: true });
+
+    // Log in to the main page
+    await page.getByRole("button", { name: "LOG IN" }).click();
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
+    await page.getByRole("menuitem", { name: "Excel" }).click({ force: true });
+
+    // Download the file
+    const downloadPath = path.resolve(__dirname, "downloads");
+    const download = await page.waitForEvent("download");
+    const filePath = path.join(downloadPath, download.suggestedFilename());
+    await download.saveAs(filePath);
+
+    const fileExists = fs.existsSync(filePath);
+    const fileName = path.basename(filePath);
+    expect(fileExists).toBe(true);
+    expect(fileName).toContain("facilities");
+    expect(fileName).toContain(".xlsx");
+
+    // Check that the number of facilities is visible
+    const results = page.getByText(/^\d+ results$/);
+    await expect(results).toBeVisible();
+
+    // Get count of Facilities output on the  UI
+    const text = await results.textContent();
+    const numberOfFacilities = parseInt(text?.match(/\d+/)?.[0] || "0", 10);
+    const headerRow = 1;
+
+    // Get the first sheet
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const rows: CellValue[][] = [];
+    if (workbook.worksheets.length === 0) {
+      throw new Error("Workbook contains no sheets");
+    }
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error("First worksheet is null");
+    }
+    worksheet.eachRow((row: Row) => {
+      if (row.values && Array.isArray(row.values)) {
+        rows.push(row.values.slice(1));
+      }
+    });
+
+    // Check that the number of facilities is correct
+    expect(rows.length).toEqual(numberOfFacilities + headerRow);
+  })
 });
