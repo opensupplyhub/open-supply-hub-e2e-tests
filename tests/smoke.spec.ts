@@ -139,6 +139,8 @@ const uploadScenarios = [
     fileName: "DO_NOT_APPROVE test release.csv",
     listName: "DO NOT APPROVE test release CSV",
     description: "DO NOT APPROVE Test CSV upload",
+    errorText: "Could not find a country code for 'Sp'ain'.",
+    numberOfErrors: 1,
   },
   {
     testCaseID: "OSDEV-1231",
@@ -146,10 +148,20 @@ const uploadScenarios = [
     fileName: "DO_NOT_APPROVE test release.xlsx",
     listName: "DO NOT APPROVE test release XLSX",
     description: "DO NOT APPROVE Test XLSX upload",
+    errorText:"Could not find a country code for 'A'ustralia'.",
+    numberOfErrors: 2,
   },
 ];
 
-uploadScenarios.forEach(({ format, fileName, listName, description, testCaseID }) => {
+uploadScenarios.forEach(({
+  format,
+  fileName,
+  listName,
+  description,
+  testCaseID,
+  errorText,
+  numberOfErrors,
+}) => {
   test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
     test(`Successful list uploading in ${format} format.`, async ({ page }) => {
       test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
@@ -367,7 +379,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description, testCaseID }
       await page.waitForLoadState("networkidle");
 
       const errorRows = page.locator("table tbody tr");
-      expect(await errorRows.count()).toBe(format === "CSV" ? 1 : 2);
+      expect(await errorRows.count()).toBe(numberOfErrors);
       await errorRows.click();
       await page.evaluate(() => {
         window.scrollBy(0, 100); // scroll down 100px
@@ -375,7 +387,7 @@ uploadScenarios.forEach(({ format, fileName, listName, description, testCaseID }
 
       await expect(page.locator("text=Errors")).toBeVisible();
       await expect(
-        page.locator(`text=Could not find a country code for ${format === "CSV" ? "'Sp'ain'" : "'A'ustralia'"}.`)
+        page.locator(`text=${errorText}`)
       ).toBeVisible();
     });
 
