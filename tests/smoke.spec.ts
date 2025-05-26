@@ -1,10 +1,10 @@
-import { test, expect, chromium } from "@playwright/test";
+import { test, expect, chromium, Frame } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import ExcelJS, { Row, CellValue }  from "exceljs";
+import ExcelJS, { Row, CellValue } from "exceljs";
 
 test.beforeAll(setup);
 
@@ -148,315 +148,344 @@ const uploadScenarios = [
     fileName: "DO_NOT_APPROVE test release.xlsx",
     listName: "DO NOT APPROVE test release XLSX",
     description: "DO NOT APPROVE Test XLSX upload",
-    errorText:"Could not find a country code for 'A'ustralia'.",
+    errorText: "Could not find a country code for 'A'ustralia'.",
     numberOfErrors: 2,
   },
 ];
 
-uploadScenarios.forEach(({
-  format,
-  fileName,
-  listName,
-  description,
-  testCaseID,
-  errorText,
-  numberOfErrors,
-}) => {
-  test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
-    test(`Successful list uploading in ${format} format.`, async ({ page }) => {
-      test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
-      const { BASE_URL, VERSION_TAG="v0.0.0" } = process.env;
-      await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+uploadScenarios.forEach(
+  ({
+    format,
+    fileName,
+    listName,
+    description,
+    testCaseID,
+    errorText,
+    numberOfErrors,
+  }) => {
+    test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
+      test(`Successful list uploading in ${format} format.`, async ({
+        page,
+      }) => {
+        test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
+        const { BASE_URL, VERSION_TAG = "v0.0.0" } = process.env;
+        await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
-      await expect(
-        page.getByRole("heading", { name: "Contribute" })
-      ).toBeVisible();
-      await page
-        .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
-        .click();
-      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: "Contribute" })
+        ).toBeVisible();
+        await page
+          .getByRole("link", {
+            name: "Log in to contribute to Open Supply Hub",
+          })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Log In" })
+        ).toBeVisible();
 
-      // Log in to the main page
-      const { USER_EMAIL, USER_PASSWORD } = process.env;
-      await page.getByLabel("Email").fill(USER_EMAIL!);
-      await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
-      await page.getByRole("button", { name: "Log In" }).click();
-      await page.waitForLoadState("networkidle");
+        // Log in to the main page
+        const { USER_EMAIL, USER_PASSWORD } = process.env;
+        await page.getByLabel("Email").fill(USER_EMAIL!);
+        await page
+          .getByRole("textbox", { name: "Password" })
+          .fill(USER_PASSWORD!);
+        await page.getByRole("button", { name: "Log In" }).click();
+        await page.waitForLoadState("networkidle");
 
-      // Navigate to Upload Multiple Locations page
-      const addDataText = "Add Data";
-      page
-        .locator(`div.nav-item a.button:has-text("${addDataText}")`)
-        .click({ force: true });
-      await expect(
-        page.getByRole("heading", {
-          name: "Add production location data to OS Hub",
-        })
-      ).toBeVisible();
+        // Navigate to Upload Multiple Locations page
+        const addDataText = "Add Data";
+        page
+          .locator(`div.nav-item a.button:has-text("${addDataText}")`)
+          .click({ force: true });
+        await expect(
+          page.getByRole("heading", {
+            name: "Add production location data to OS Hub",
+          })
+        ).toBeVisible();
 
-      await page
-        .getByRole("button", { name: "Upload Multiple Locations" })
-        .click();
-      await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
+        await page
+          .getByRole("button", { name: "Upload Multiple Locations" })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Upload" })
+        ).toBeVisible();
 
-      // Fill in the form fields
-      const nameInput = page.getByLabel("Enter the name for this facility list");
-      await nameInput.fill(`${listName} ${VERSION_TAG}`);
-      await expect(nameInput).toHaveValue(`${listName} ${VERSION_TAG}`);
+        // Fill in the form fields
+        const nameInput = page.getByLabel(
+          "Enter the name for this facility list"
+        );
+        await nameInput.fill(`${listName} ${VERSION_TAG}`);
+        await expect(nameInput).toHaveValue(`${listName} ${VERSION_TAG}`);
 
+        const descriptionInput = page.getByLabel(
+          "Enter a description of this facility list and include a timeframe for the list's validity"
+        );
+        await descriptionInput.fill(description);
+        await expect(descriptionInput).toHaveValue(description);
 
-      const descriptionInput = page.getByLabel(
-        "Enter a description of this facility list and include a timeframe for the list's validity"
-      );
-      await descriptionInput.fill(description);
-      await expect(descriptionInput).toHaveValue(description);
+        await page
+          .getByRole("button", { name: /select facility list file/i })
+          .click();
 
-      await page
-        .getByRole("button", { name: /select facility list file/i })
-        .click();
+        // Original path
+        const originalFilePath = path.resolve(__dirname, `data/${fileName}`);
+        const newFileName = `${
+          path.parse(fileName).name
+        } ${VERSION_TAG}${path.extname(fileName)}`;
 
-      // Original path
-      const originalFilePath = path.resolve(__dirname, `data/${fileName}`);
-      const newFileName = `${path.parse(fileName).name} ${VERSION_TAG}${path.extname(fileName)}`;
+        // Temp file path (in system temp dir)
+        const tempFilePath = path.join(os.tmpdir(), newFileName);
 
-      // Temp file path (in system temp dir)
-      const tempFilePath = path.join(os.tmpdir(), newFileName);
+        // Copy original file to new temp file with new name
+        fs.copyFileSync(originalFilePath, tempFilePath);
 
-      // Copy original file to new temp file with new name
-      fs.copyFileSync(originalFilePath, tempFilePath);
+        // Upload renamed temp file
+        const fileInput = page.locator("input[type='file']");
+        await fileInput.setInputFiles(tempFilePath);
+        await expect(
+          page.getByText(new RegExp(newFileName, "i"))
+        ).toBeVisible();
 
-      // Upload renamed temp file
-      const fileInput = page.locator("input[type='file']");
-      await fileInput.setInputFiles(tempFilePath);
-      await expect(
-        page.getByText(new RegExp(newFileName, "i"))
-      ).toBeVisible();
+        // Submit the form
+        const submitButton = page.getByRole("button", { name: /submit/i });
+        await submitButton.scrollIntoViewIfNeeded();
+        await expect(submitButton).toBeEnabled();
+        await submitButton.click();
+        const response = await page.waitForResponse(
+          (resp) =>
+            resp.url().includes("/api/facility-lists/") && resp.status() === 200
+        );
 
-      // Submit the form
-      const submitButton = page.getByRole("button", { name: /submit/i });
-      await submitButton.scrollIntoViewIfNeeded();
-      await expect(submitButton).toBeEnabled();
-      await submitButton.click();
-      const response = await page.waitForResponse(
-        (resp) =>
-          resp.url().includes("/api/facility-lists/") && resp.status() === 200
-      );
+        // Delete temp file
+        fs.unlinkSync(tempFilePath);
 
-      // Delete temp file
-      fs.unlinkSync(tempFilePath);
+        // Get the list ID
+        const data = await response.json();
+        const listId = data.id;
+        await page.waitForLoadState("networkidle");
 
-      // Get the list ID
-      const data = await response.json();
-      const listId = data.id;
-      await page.waitForLoadState("networkidle");
+        const header = page.locator("h2", {
+          hasText: "Thank you for submitting your list!",
+        });
+        await expect(header).toBeVisible();
 
-      const header = page.locator("h2", {
-        hasText: "Thank you for submitting your list!",
-      });
-      await expect(header).toBeVisible();
+        const toMainButton = page.getByRole("button", {
+          name: /GO TO THE MAIN PAGE/i,
+        });
+        await expect(toMainButton).toBeVisible();
 
-      const toMainButton = page.getByRole("button", {
-        name: /GO TO THE MAIN PAGE/i,
-      });
-      await expect(toMainButton).toBeVisible();
+        const refreshButton = page.getByRole("button", { name: /REFRESH/i });
+        await expect(refreshButton).toBeVisible();
+        await toMainButton.click();
 
-      const refreshButton = page.getByRole("button", { name: /REFRESH/i });
-      await expect(refreshButton).toBeVisible();
-      await toMainButton.click();
+        await page.getByRole("button", { name: "My Account" }).click();
+        await page.getByRole("link", { name: "My Lists" }).click();
+        await expect(
+          page.getByRole("heading", { name: "My Lists" })
+        ).toBeVisible();
 
-      await page.getByRole("button", { name: "My Account" }).click();
-      await page.getByRole("link", { name: "My Lists" }).click();
-      await expect(page.getByRole("heading", { name: "My Lists" })).toBeVisible();
+        // Uploaded list is visible on My Lists page
+        await page.waitForSelector("table tbody tr:first-child", {
+          timeout: 10000,
+        });
+        const row = page.locator("table tbody tr:first-child");
+        await expect(row).toBeVisible();
 
-      // Uploaded list is visible on My Lists page
-      await page.waitForSelector("table tbody tr:first-child", {
-        timeout: 10000,
-      });
-      const row = page.locator("table tbody tr:first-child");
-      await expect(row).toBeVisible();
-
-      const headers = page.locator("table thead tr th");
-      const columns = [
-        {
-          name: "Name",
-          value: `${listName} ${VERSION_TAG}`,
-        },
-        {
-          name: "Description",
-          value: description,
-        },
-        {
-          name: "File Name",
-          value: newFileName,
-        },
-      ];
-
-      for (const [index, column] of columns.entries()) {
-        await expect(headers.nth(index)).toHaveText(column.name);
-        await expect(row.locator("td").nth(index)).toHaveText(column.value);
-      }
-
-      await page
-        .locator(`tr:has-text("${listName} ${VERSION_TAG}")`)
-        .first()
-        .click({ force: true });
-
-      // Poll repeatedly checks whether the result is ready, with timeouts to avoid hard waits.
-      await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(
-              `${BASE_URL}/api/facility-lists/${listId}/`
-            );
-            const data = await response.json();
-            return data["statuses"].length;
+        const headers = page.locator("table thead tr th");
+        const columns = [
+          {
+            name: "Name",
+            value: `${listName} ${VERSION_TAG}`,
           },
           {
-            message: "/facility-lists/id return statuses (parsed)",
-            intervals: [30000],
-            timeout: 1600000,
-          }
-        )
-        .not.toBe(0);
-
-      await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(
-              `${BASE_URL}/api/facility-lists/${listId}/items/?page=1&pageSize=20/`
-            );
-            const data = await response.json();
-            return data["count"];
+            name: "Description",
+            value: description,
           },
           {
-            message:
-              "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
-            intervals: [30000],
-            timeout: 1600000,
-          }
-        )
-        .not.toBe(0);
+            name: "File Name",
+            value: newFileName,
+          },
+        ];
 
-      await page.goto(`${BASE_URL}/lists/${listId}`);
-      await page.waitForLoadState("networkidle");
+        for (const [index, column] of columns.entries()) {
+          await expect(headers.nth(index)).toHaveText(column.name);
+          await expect(row.locator("td").nth(index)).toHaveText(column.value);
+        }
 
-      // Post uploading errors occurred while parsing your list.
-      await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
-      await expect(
-        page.getByRole("heading", { name: "List Status" })
-      ).toBeVisible();
-      await expect(page.getByRole("heading", { name: "PENDING" })).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Download formatted file/i })
-      ).toBeVisible();
-      await expect(page.getByText(/Download submitted file/i)).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Back to lists/i })
-      ).toBeVisible();
+        await page
+          .locator(`tr:has-text("${listName} ${VERSION_TAG}")`)
+          .first()
+          .click({ force: true });
 
-      // Post-uploading errors occurred while parsing your list.
-      await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
-      await expect(
-        page.getByRole("heading", { name: "List Status" })
-      ).toBeVisible();
-      await expect(page.getByRole("heading", { name: "PENDING" })).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Download formatted file/i })
-      ).toBeVisible();
-      await expect(page.getByText(/Download submitted file/i)).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Back to lists/i })
-      ).toBeVisible();
-      await page.evaluate(() => {
-        window.scrollBy(0, 100); // scroll down 100px
+        // Poll repeatedly checks whether the result is ready, with timeouts to avoid hard waits.
+        await expect
+          .poll(
+            async () => {
+              const response = await page.request.get(
+                `${BASE_URL}/api/facility-lists/${listId}/`
+              );
+              const data = await response.json();
+              return data["statuses"].length;
+            },
+            {
+              message: "/facility-lists/id return statuses (parsed)",
+              intervals: [30000],
+              timeout: 1600000,
+            }
+          )
+          .not.toBe(0);
+
+        await expect
+          .poll(
+            async () => {
+              const response = await page.request.get(
+                `${BASE_URL}/api/facility-lists/${listId}/items/?page=1&pageSize=20/`
+              );
+              const data = await response.json();
+              return data["count"];
+            },
+            {
+              message:
+                "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
+              intervals: [30000],
+              timeout: 1600000,
+            }
+          )
+          .not.toBe(0);
+
+        await page.goto(`${BASE_URL}/lists/${listId}`);
+        await page.waitForLoadState("networkidle");
+
+        // Post uploading errors occurred while parsing your list.
+        await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
+        await expect(
+          page.getByRole("heading", { name: "List Status" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: "PENDING" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: /Download formatted file/i })
+        ).toBeVisible();
+        await expect(page.getByText(/Download submitted file/i)).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: /Back to lists/i })
+        ).toBeVisible();
+
+        // Post-uploading errors occurred while parsing your list.
+        await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
+        await expect(
+          page.getByRole("heading", { name: "List Status" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: "PENDING" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: /Download formatted file/i })
+        ).toBeVisible();
+        await expect(page.getByText(/Download submitted file/i)).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: /Back to lists/i })
+        ).toBeVisible();
+        await page.evaluate(() => {
+          window.scrollBy(0, 100); // scroll down 100px
+        });
+
+        await page.locator(".select__value-container").click();
+        await page.locator(".select__option:has-text('ERROR_PARSING')").click();
+        await expect(page.locator(".select__multi-value__label")).toHaveText(
+          /ERROR_PARSING/
+        );
+        await page.waitForLoadState("networkidle");
+
+        const errorRows = page.locator("table tbody tr");
+        expect(await errorRows.count()).toBe(numberOfErrors);
+        await errorRows.click();
+        await page.evaluate(() => {
+          window.scrollBy(0, 100); // scroll down 100px
+        });
+
+        await expect(page.locator("text=Errors")).toBeVisible();
+        await expect(page.locator(`text=${errorText}`)).toBeVisible();
       });
 
-      await page.locator(".select__value-container").click();
-      await page.locator(".select__option:has-text('ERROR_PARSING')").click();
-      await expect(page.locator(".select__multi-value__label")).toHaveText(
-        /ERROR_PARSING/
-      );
-      await page.waitForLoadState("networkidle");
+      test(`The ${format} list validation before upload.`, async ({ page }) => {
+        const { BASE_URL } = process.env;
+        await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
-      const errorRows = page.locator("table tbody tr");
-      expect(await errorRows.count()).toBe(numberOfErrors);
-      await errorRows.click();
-      await page.evaluate(() => {
-        window.scrollBy(0, 100); // scroll down 100px
+        await expect(
+          page.getByRole("heading", { name: "Contribute" })
+        ).toBeVisible();
+        await page
+          .getByRole("link", {
+            name: "Log in to contribute to Open Supply Hub",
+          })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Log In" })
+        ).toBeVisible();
+
+        // fill in login credentials
+        const { USER_EMAIL, USER_PASSWORD } = process.env;
+        await page.getByLabel("Email").fill(USER_EMAIL!);
+        await page
+          .getByRole("textbox", { name: "Password" })
+          .fill(USER_PASSWORD!);
+        await page.getByRole("button", { name: "Log In" }).click();
+        await page.waitForLoadState("networkidle");
+
+        // Navigate to Upload Multiple Locations page
+        const addDataText = "Add Data";
+        page
+          .locator(`div.nav-item a.button:has-text("${addDataText}")`)
+          .click({ force: true });
+        await expect(
+          page.getByRole("heading", {
+            name: "Add production location data to OS Hub",
+          })
+        ).toBeVisible();
+
+        await page
+          .getByRole("button", { name: "Upload Multiple Locations" })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Upload" })
+        ).toBeVisible();
+
+        const submitButton = page.getByRole("button", { name: /submit/i });
+        await submitButton.scrollIntoViewIfNeeded();
+        await expect(submitButton).toBeEnabled();
+        await submitButton.click();
+
+        // Check that the error messages are visible
+        await expect(
+          page.locator(".form__field", {
+            hasText: "Missing required Facility List Name.",
+          })
+        ).toBeVisible();
+        await expect(
+          page.locator(".form__field", {
+            hasText: "Missing required Facility List File.",
+          })
+        ).toBeVisible();
+
+        // Fill in the form fields with invalid values
+        const nameInput = page.getByLabel(
+          "Enter the name for this facility list"
+        );
+        await nameInput.fill('Test name!@@%^^&*()":,./ CO. LTD');
+        await expect(nameInput).toHaveValue('Test name!@@%^^&*()":,./ CO. LTD');
+        await submitButton.click();
+        await expect(
+          page.locator(".form__field", {
+            hasText:
+              "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.",
+          })
+        ).toBeVisible();
       });
-
-      await expect(page.locator("text=Errors")).toBeVisible();
-      await expect(
-        page.locator(`text=${errorText}`)
-      ).toBeVisible();
     });
-
-    test(`The ${format} list validation before upload.`, async ({ page }) => {
-      const { BASE_URL } = process.env;
-      await page.goto(`${BASE_URL}/contribute/multiple-locations`);
-
-      await expect(
-        page.getByRole("heading", { name: "Contribute" })
-      ).toBeVisible();
-      await page
-        .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
-        .click();
-      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-
-      // fill in login credentials
-      const { USER_EMAIL, USER_PASSWORD } = process.env;
-      await page.getByLabel("Email").fill(USER_EMAIL!);
-      await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
-      await page.getByRole("button", { name: "Log In" }).click();
-      await page.waitForLoadState("networkidle");
-
-      // Navigate to Upload Multiple Locations page
-      const addDataText = "Add Data";
-      page
-        .locator(`div.nav-item a.button:has-text("${addDataText}")`)
-        .click({ force: true });
-      await expect(
-        page.getByRole("heading", {
-          name: "Add production location data to OS Hub",
-        })
-      ).toBeVisible();
-
-      await page
-        .getByRole("button", { name: "Upload Multiple Locations" })
-        .click();
-      await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
-
-      const submitButton = page.getByRole("button", { name: /submit/i });
-      await submitButton.scrollIntoViewIfNeeded();
-      await expect(submitButton).toBeEnabled();
-      await submitButton.click();
-
-      // Check that the error messages are visible
-      await expect(
-        page.locator(".form__field", {
-          hasText: "Missing required Facility List Name.",
-        })
-      ).toBeVisible();
-      await expect(
-        page.locator(".form__field", {
-          hasText: "Missing required Facility List File.",
-        })
-      ).toBeVisible();
-
-      // Fill in the form fields with invalid values
-      const nameInput = page.getByLabel("Enter the name for this facility list");
-      await nameInput.fill('Test name!@@%^^&*()":,./ CO. LTD');
-      await expect(nameInput).toHaveValue('Test name!@@%^^&*()":,./ CO. LTD');
-      await submitButton.click();
-      await expect(
-        page.locator(".form__field", {
-          hasText:
-            "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.",
-        })
-      ).toBeVisible();
-    });
-  });
-});
+  }
+);
 
 test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
   const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
@@ -482,35 +511,47 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
   await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
   await adminPage.getByRole("button", { name: "Log In" }).click();
-  await expect(adminPage.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)).toBeVisible();
+  await expect(
+    adminPage.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)
+  ).toBeVisible();
 
   // make sure that we have successfully logged in
   await expect(
     adminPage.getByRole("link", { name: "Open Supply Hub Admin" })
   ).toBeVisible();
-  await expect(adminPage.getByText("Select contributor to change")).toBeVisible();
+  await expect(
+    adminPage.getByText("Select contributor to change")
+  ).toBeVisible();
   const searchInput = adminPage.getByRole("textbox", { name: "Search" });
   await searchInput.fill(USER_ADMIN_EMAIL!);
   await adminPage.getByRole("button", { name: "Search" }).click();
   await adminPage.waitForLoadState("networkidle");
 
-  const firstRowLink = adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
+  const firstRowLink = adminPage
+    .locator("table#result_list tbody tr")
+    .first()
+    .locator("th.field-__str__ a");
   await firstRowLink.click();
   await adminPage.waitForLoadState("networkidle");
 
   await expect(adminPage.getByText("Change contributor")).toBeVisible();
   const adminInput = adminPage.locator("#id_admin");
-  expect(await adminInput.locator("option:checked").textContent()).toBe(USER_ADMIN_EMAIL);
+  expect(await adminInput.locator("option:checked").textContent()).toBe(
+    USER_ADMIN_EMAIL
+  );
 
   // 2. Delete Embed config and Embed level
   const embedConfigInput = adminPage.locator("#id_embed_config");
   const embedLevelInput = adminPage.locator("#id_embed_level");
 
-
   await embedConfigInput.selectOption("");
   await embedLevelInput.selectOption("");
-  expect(await embedConfigInput.locator("option:checked").textContent()).toBe("---------");
-  expect(await embedLevelInput.locator("option:checked").textContent()).toBe("---------");
+  expect(await embedConfigInput.locator("option:checked").textContent()).toBe(
+    "---------"
+  );
+  expect(await embedLevelInput.locator("option:checked").textContent()).toBe(
+    "---------"
+  );
 
   await adminPage.locator("input[type='submit'][value='Save']").click();
   await adminPage.waitForLoadState("networkidle");
@@ -525,15 +566,27 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await settingsPage.waitForLoadState("networkidle");
 
   await expect(
-    settingsPage.locator("text=Looking to display your supplier data on your website?")
+    settingsPage.locator(
+      "text=Looking to display your supplier data on your website?"
+    )
   ).toHaveText(/Looking to display your supplier data on your website?/);
   await expect(
-    settingsPage.locator("text=The Open Supply Hub offers an easy-to-use embedded map option for your website.")
-  ).toHaveText(/The Open Supply Hub offers an easy-to-use embedded map option for your website./);
+    settingsPage.locator(
+      "text=The Open Supply Hub offers an easy-to-use embedded map option for your website."
+    )
+  ).toHaveText(
+    /The Open Supply Hub offers an easy-to-use embedded map option for your website./
+  );
   await expect(
-    settingsPage.locator("text=Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab.")
-  ).toHaveText(/Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab./);
-  await expect(settingsPage.getByRole("link", { name: "OS Hub Embedded Map" })).toBeVisible();
+    settingsPage.locator(
+      "text=Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab."
+    )
+  ).toHaveText(
+    /Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab./
+  );
+  await expect(
+    settingsPage.getByRole("link", { name: "OS Hub Embedded Map" })
+  ).toBeVisible();
 
   // 4. Return to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
   await firstRowLink.click();
@@ -541,7 +594,10 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
 
   await adminPage.locator("#id_embed_level").selectOption("3");
   expect(
-    await adminPage.locator("#id_embed_level").locator("option:checked").textContent()
+    await adminPage
+      .locator("#id_embed_level")
+      .locator("option:checked")
+      .textContent()
   ).toBe("Embed Deluxe / Custom Embed");
 
   await adminPage.locator("input[type='submit'][value='Save']").click();
@@ -556,7 +612,9 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await settingsPage.waitForLoadState("networkidle");
 
   await expect(
-    settingsPage.locator("text=Generate a customized OS Hub Embedded Map for your website.")
+    settingsPage.locator(
+      "text=Generate a customized OS Hub Embedded Map for your website."
+    )
   ).toHaveText(/Generate a customized OS Hub Embedded Map for your website./);
   await expect(
     settingsPage.locator("text=Embed code for your website")
@@ -568,11 +626,17 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
     settingsPage.locator("text=Embed code for your website")
   ).toHaveText(/Embed code for your website/);
   await expect(
-    settingsPage.locator("text=This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc.")
-  ).toHaveText(/This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc./);
+    settingsPage.locator(
+      "text=This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc."
+    )
+  ).toHaveText(
+    /This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc./
+  );
   await expect(settingsPage.locator("iframe")).not.toBeVisible();
   await expect(
-    settingsPage.locator("text=Choose a color and enter a width and height to see a preview.")
+    settingsPage.locator(
+      "text=Choose a color and enter a width and height to see a preview."
+    )
   ).toHaveText(/Choose a color and enter a width and height to see a preview./);
 
   // 6. Put size for the map, for example, 100%. Waite until the map is generated
@@ -581,53 +645,78 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   const height = settingsPage.locator("input#height");
   await height.fill("1000");
 
-  await expect.poll(async () => {
-    const csrfToken = (await settingsPage.context().cookies())
-      .find(cookie => cookie.name === "csrftoken")?.value;
+  await expect
+    .poll(
+      async () => {
+        const csrfToken = (await settingsPage.context().cookies()).find(
+          (cookie) => cookie.name === "csrftoken"
+        )?.value;
 
-    const response = await settingsPage.request.post(`${BASE_URL}/api/embed-configs/`, {
-      headers: {
-        "X-CSRFToken": csrfToken || "",
-        "Accept": "application/json",
-        "Referer": `${BASE_URL}/`,
+        const response = await settingsPage.request.post(
+          `${BASE_URL}/api/embed-configs/`,
+          {
+            headers: {
+              "X-CSRFToken": csrfToken || "",
+              Accept: "application/json",
+              Referer: `${BASE_URL}/`,
+            },
+            data: {
+              width: "100%",
+              height: "100",
+            },
+          }
+        );
+
+        return response.status();
       },
-      data: {
-        width: "100%",
-        height: "100",
-      },
-    });
+      {
+        message: "POST /api/embed-configs/ succeeds",
+        timeout: 10000,
+      }
+    )
+    .toBe(200);
 
-    return response.status();
-  }, {
-    message: "POST /api/embed-configs/ succeeds",
-    timeout: 10000,
-  }).toBe(200);
-
-  const checkbox = settingsPage.locator("label:has-text('100%') input[type='checkbox']");
+  const checkbox = settingsPage.locator(
+    "label:has-text('100%') input[type='checkbox']"
+  );
   await checkbox.waitFor({ state: "visible" });
   await checkbox.scrollIntoViewIfNeeded();
   await expect(checkbox).not.toBeChecked();
   await checkbox.click({ force: true });
   await expect(settingsPage.getByLabel("100% width")).toBeChecked();
 
-  await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
+  await expect(
+    settingsPage.locator("button:has-text('Copy to clipboard')")
+  ).toBeVisible();
 
   const frame = settingsPage.frameLocator("[id^='oar-embed-'] iframe");
   await frame.locator("button", { hasText: /draw custom area/i }).click();
 
-  const texts = await frame.locator("ul.leaflet-draw-actions > li a").allTextContents();
-  expect(texts).toEqual([ "Finish", "Delete last point", "Cancel" ]);
+  const texts = await frame
+    .locator("ul.leaflet-draw-actions > li a")
+    .allTextContents();
+  expect(texts).toEqual(["Finish", "Delete last point", "Cancel"]);
 
   // 7. Check in the admin panel whether the Embed config is filled in.
   await adminPage.reload({ waitUntil: "networkidle" });
-  await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
+  await adminPage
+    .locator("table#result_list tbody tr")
+    .first()
+    .locator("th.field-__str__ a")
+    .click();
   await adminPage.waitForLoadState("networkidle");
 
   await expect(adminPage.getByText("Change contributor")).toBeVisible();
   const configInput = adminPage.locator("#id_embed_config");
-  expect(await configInput.locator("option:checked").textContent()).not.toBe("---------");
-  expect(await configInput.locator("option:checked").textContent()).toContain("100% x 100");
-  const selectedValue = await configInput.locator("option:checked").getAttribute("value");
+  expect(await configInput.locator("option:checked").textContent()).not.toBe(
+    "---------"
+  );
+  expect(await configInput.locator("option:checked").textContent()).toContain(
+    "100% x 100"
+  );
+  const selectedValue = await configInput
+    .locator("option:checked")
+    .getAttribute("value");
   expect(selectedValue).not.toBe("");
 });
 
@@ -1625,7 +1714,9 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
   }) => {
     // Check that the user is on the main page
     const { BASE_URL } = process.env;
-    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+    await page.goto(
+      `${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!
+    );
 
     const title = await page.title();
     expect(title).toBe("Open Supply Hub");
@@ -1643,18 +1734,22 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     await menuItem.click({ force: true });
 
     // Check that the login pop-up is visible
-    await expect(page.getByRole("heading", { name: "Log In To Download" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Log In To Download" })
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
     await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
     await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
-  })
+  });
 
   test("An authorized user can download a list of facilities with amounts 7000 - 9900 in xlsx.", async ({
     page,
   }) => {
     // Log in to the main page
     const { BASE_URL } = process.env;
-    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+    await page.goto(
+      `${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!
+    );
     await page.getByRole("button", { name: "Download" }).click({ force: true });
 
     // Check that the menu item is visible
@@ -1711,5 +1806,97 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
 
     // Check that the number of facilities is correct
     expect(rows.length).toEqual(numberOfFacilities + headerRow);
-  })
+  });
+});
+
+test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
+
+  // Company name = link to the site
+  const linksToSitesWhereCheckEM = [
+    {
+      name: "Nordstrom",
+      url: "https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
+    },
+    {
+      name: "Levis",
+      url: "https://www.levistrauss.com/sustainability-report/community/supplier-map/",
+    },
+    {
+      name: "Columbia Sportswear Company",
+      url: "https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/",
+    },
+    {
+      name: "ASOS",
+      url: "https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/",
+    },
+    { name: "ZEEMAN", url: "https://www.zeeman.com/factory" },
+    {
+      name: "Amazon",
+      url: "https://sustainability.aboutamazon.com/human-rights/supply-chain",
+    },
+  ];
+
+  for (const { name, url } of linksToSitesWhereCheckEM) {
+    test(`Check embedded maps on ${name} website.`, async ({ page }) => {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await page.waitForLoadState("load"); // fires when all resources are loaded
+      await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
+
+      let mapFrame: Frame | undefined;
+      // get all iframe elements
+      const iframeElements = await page.$$("iframe");
+
+      // Check all iframes for embedded map elements
+      for (const iframeElement of iframeElements) {
+        const frame = await iframeElement.contentFrame();
+
+        if (!frame) {
+          continue;
+        }
+
+        const drawButton = frame.getByRole("button", {
+          name: "DRAW CUSTOM AREA",
+        });
+        const zoomButton = frame.getByRole("button", {
+          name: "Zoom to Search",
+        });
+        const copyLinkButton = frame.getByRole("button", { name: "Copy Link" });
+        const downloadButton = frame.getByRole("button", { name: "Download" });
+        const facilityText = frame.getByRole("heading", { name: "Facilities" });
+
+        await drawButton.isVisible();
+        await zoomButton.isVisible();
+        await copyLinkButton.isVisible();
+        await downloadButton.isVisible();
+        await facilityText.isVisible();
+
+        if (
+          drawButton &&
+          zoomButton &&
+          copyLinkButton &&
+          downloadButton &&
+          facilityText
+        ) {
+          mapFrame = frame;
+          break;
+        }
+      }
+
+      expect(mapFrame).not.toBeUndefined();
+
+      const { VERSION_TAG = "v0.0.0" } = process.env;
+      const fileName = `${name}-${VERSION_TAG}`;
+      const screenshotDir = path.resolve(__dirname, "screenshots");
+
+      if (!fs.existsSync(screenshotDir)) {
+        fs.mkdirSync(screenshotDir);
+      }
+
+      const filePath = path.join(screenshotDir, `${fileName}.png`);
+      await page.screenshot({ path: filePath, fullPage: true });
+    });
+  }
 });
