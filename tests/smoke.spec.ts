@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Frame } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
@@ -1413,7 +1413,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
       await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
 
 
-      let foundEmbedMapElements = false;
+      let mapFrame: Frame | undefined;
       // get all iframe elements
       const iframeElements = await page.$$("iframe");
 
@@ -1435,24 +1435,24 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
           await facilityText.isVisible();
 
           if (drawButton && zoomButton && copyLinkButton && downloadButton && facilityText) {
-            foundEmbedMapElements = true;
+            mapFrame = frame;
             break;
           }
       }
 
-    if (!foundEmbedMapElements) {
-      const { VERSION_TAG = "v0.0.0" } = process.env;
-      const fileName = `${name}-${VERSION_TAG}`;
-      const screenshotDir = path.resolve(__dirname, "screenshots");
 
-      if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir);
+      if (!mapFrame) {
+        const { VERSION_TAG = "v0.0.0" } = process.env;
+        const fileName = `${name}-${VERSION_TAG}`;
+        const screenshotDir = path.resolve(__dirname, "screenshots");
 
-      const filePath = path.join(screenshotDir, `${fileName}.png`);
-      await page.screenshot({ path: filePath, fullPage: true });
-    }
+        if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir);
 
-    expect(foundEmbedMapElements).toBeTruthy();
+        const filePath = path.join(screenshotDir, `${fileName}.png`);
+        await page.screenshot({ path: filePath, fullPage: true });
+      }
 
+      expect(mapFrame).not.toBeUndefined()
     });
   }
 });
