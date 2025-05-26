@@ -399,8 +399,13 @@ uploadScenarios.forEach(
         await page.waitForLoadState("networkidle");
 
         const errorRows = page.locator("table tbody tr");
-        expect(await errorRows.count()).toBe(numberOfErrors);
-        await errorRows.click();
+        const errorRowsCount = await errorRows.count();
+        expect(errorRowsCount).toBe(numberOfErrors);
+
+        for (let i = 0; i < errorRowsCount; i++) {
+          await errorRows.nth(i).click();
+        }
+
         await page.evaluate(() => {
           window.scrollBy(0, 100); // scroll down 100px
         });
