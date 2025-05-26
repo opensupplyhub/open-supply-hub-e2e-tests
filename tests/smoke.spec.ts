@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
-import { takeAndSaveScreenshot } from "./utils/helpers";
 import path from "path";
 import fs from "fs";
 
@@ -1398,18 +1397,18 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
     test.skip(true, "Only runs in Production environment");
   }
   // Company name = link to the site
-  const linksToSitesWhereCheckEM = {
-    "Nordstrom":"https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
-    "Levis":"https://www.levistrauss.com/sustainability-report/community/supplier-map/",
-    "Columbia Sportswear Company":"https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/",
-    "ASOS":"https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/",
-    "ZEEMAN":"https://www.zeeman.com/factory",
-    "Amazon":"https://sustainability.aboutamazon.com/human-rights/supply-chain",
-  }
+  const linksToSitesWhereCheckEM = [
+    {name: "Nordstrom", url: "https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business"},
+    {name: "Levis", url: "https://www.levistrauss.com/sustainability-report/community/supplier-map/"},
+    {name: "Columbia Sportswear Company", url: "https://www.columbiasportswearcompany.com/corporate-responsibility-group/responsible-practices/supply-chain/"},
+    {name: "ASOS", url: "https://www.asosplc.com/fashion-with-integrity/our-supply-chain-1/"},
+    {name: "ZEEMAN", url: "https://www.zeeman.com/factory"},
+    {name: "Amazon", url: "https://sustainability.aboutamazon.com/human-rights/supply-chain"},
+]
 
-  for (const [company, link] of Object.entries(linksToSitesWhereCheckEM)) {
-    test(`Check embedded maps on ${company} website.`, async ({ page }) => {
-      await page.goto(link, { waitUntil: "networkidle" });
+  for (const { name, url } of linksToSitesWhereCheckEM) {
+    test(`Check embedded maps on ${name} website.`, async ({ page }) => {
+      await page.goto(url, { waitUntil: "networkidle" });
       await page.waitForLoadState("load"); // fires when all resources are loaded
       await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
 
@@ -1443,11 +1442,17 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
 
     if (!foundEmbedMapElements) {
       const { VERSION_TAG = "v0.0.0" } = process.env;
-      const fileName = `${company}-${VERSION_TAG}`;
+      const fileName = `${name}-${VERSION_TAG}`;
+      const screenshotDir = path.resolve(__dirname, "screenshots");
 
-      takeAndSaveScreenshot(fileName, page);
+      if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir);
+
+      const filePath = path.join(screenshotDir, `${fileName}.png`);
+      await page.screenshot({ path: filePath, fullPage: true });
     }
-      expect(foundEmbedMapElements).toBeTruthy();
+
+    expect(foundEmbedMapElements).toBeTruthy();
+
     });
   }
 });
