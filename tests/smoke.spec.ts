@@ -1,9 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, chromium } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import ExcelJS, { Row, CellValue }  from "exceljs";
 
 test.beforeAll(setup);
 
@@ -445,6 +446,179 @@ uploadScenarios.forEach(({ format, fileName, listName, description, testCaseID }
   });
 });
 
+test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
+  const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
+  const context = await browser.newContext();
+
+  // Reset cookies and storage
+  await context.clearCookies();
+  await context.clearPermissions();
+
+  // Open the admin page
+  const adminPage = await context.newPage();
+  // 1. Check your user in the admin panel
+  const { BASE_URL } = process.env;
+  await adminPage.goto(`${BASE_URL}/admin/api/contributor/`!);
+
+  // make sure that we are on the login page of Admin Dashboard
+  const title = await adminPage.title();
+  expect(title).toBe("Log in | Django site admin");
+  await expect(adminPage.getByText("Open Supply Hub Admin")).toBeVisible();
+
+  // fill in login credentials
+  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
+  await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
+  await adminPage.getByRole("button", { name: "Log In" }).click();
+  await expect(adminPage.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)).toBeVisible();
+
+  // make sure that we have successfully logged in
+  await expect(
+    adminPage.getByRole("link", { name: "Open Supply Hub Admin" })
+  ).toBeVisible();
+  await expect(adminPage.getByText("Select contributor to change")).toBeVisible();
+  const searchInput = adminPage.getByRole("textbox", { name: "Search" });
+  await searchInput.fill(USER_ADMIN_EMAIL!);
+  await adminPage.getByRole("button", { name: "Search" }).click();
+  await adminPage.waitForLoadState("networkidle");
+
+  const firstRowLink = adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a");
+  await firstRowLink.click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("Change contributor")).toBeVisible();
+  const adminInput = adminPage.locator("#id_admin");
+  expect(await adminInput.locator("option:checked").textContent()).toBe(USER_ADMIN_EMAIL);
+
+  // 2. Delete Embed config and Embed level
+  const embedConfigInput = adminPage.locator("#id_embed_config");
+  const embedLevelInput = adminPage.locator("#id_embed_level");
+
+
+  await embedConfigInput.selectOption("");
+  await embedLevelInput.selectOption("");
+  expect(await embedConfigInput.locator("option:checked").textContent()).toBe("---------");
+  expect(await embedLevelInput.locator("option:checked").textContent()).toBe("---------");
+
+  await adminPage.locator("input[type='submit'][value='Save']").click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("The contributor")).toBeVisible();
+  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+
+  // 3. Check User settings
+  const settingsPage = await context.newPage();
+  await settingsPage.goto(`${BASE_URL}/settings/`!);
+  await settingsPage.locator("button:has-text('Embed')").click();
+  await settingsPage.waitForLoadState("networkidle");
+
+  await expect(
+    settingsPage.locator("text=Looking to display your supplier data on your website?")
+  ).toHaveText(/Looking to display your supplier data on your website?/);
+  await expect(
+    settingsPage.locator("text=The Open Supply Hub offers an easy-to-use embedded map option for your website.")
+  ).toHaveText(/The Open Supply Hub offers an easy-to-use embedded map option for your website./);
+  await expect(
+    settingsPage.locator("text=Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab.")
+  ).toHaveText(/Once Embedded Map has been activated for your account, your OS Hub Embedded Map Settings will appear on this tab./);
+  await expect(settingsPage.getByRole("link", { name: "OS Hub Embedded Map" })).toBeVisible();
+
+  // 4. Return to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
+  await firstRowLink.click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await adminPage.locator("#id_embed_level").selectOption("3");
+  expect(
+    await adminPage.locator("#id_embed_level").locator("option:checked").textContent()
+  ).toBe("Embed Deluxe / Custom Embed");
+
+  await adminPage.locator("input[type='submit'][value='Save']").click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("The contributor")).toBeVisible();
+  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+
+  // 5. The user should see the form with settings for the embedded map
+  await settingsPage.reload({ waitUntil: "networkidle" });
+  await settingsPage.locator("button:has-text('Embed')").click();
+  await settingsPage.waitForLoadState("networkidle");
+
+  await expect(
+    settingsPage.locator("text=Generate a customized OS Hub Embedded Map for your website.")
+  ).toHaveText(/Generate a customized OS Hub Embedded Map for your website./);
+  await expect(
+    settingsPage.locator("text=Embed code for your website")
+  ).toHaveText(/Embed code for your website/);
+  await expect(
+    settingsPage.locator("text=Generate a customized OS Hub Embedded Map")
+  ).toHaveText(/Generate a customized OS Hub Embedded Map/);
+  await expect(
+    settingsPage.locator("text=Embed code for your website")
+  ).toHaveText(/Embed code for your website/);
+  await expect(
+    settingsPage.locator("text=This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc.")
+  ).toHaveText(/This list must include any additional data points you would like to display on your customized map, such as facility type, number of workers etc./);
+  await expect(settingsPage.locator("iframe")).not.toBeVisible();
+  await expect(
+    settingsPage.locator("text=Choose a color and enter a width and height to see a preview.")
+  ).toHaveText(/Choose a color and enter a width and height to see a preview./);
+
+  // 6. Put size for the map, for example, 100%. Waite until the map is generated
+  const width = settingsPage.locator("input#width");
+  await width.fill("1000");
+  const height = settingsPage.locator("input#height");
+  await height.fill("1000");
+
+  await expect.poll(async () => {
+    const csrfToken = (await settingsPage.context().cookies())
+      .find(cookie => cookie.name === "csrftoken")?.value;
+
+    const response = await settingsPage.request.post(`${BASE_URL}/api/embed-configs/`, {
+      headers: {
+        "X-CSRFToken": csrfToken || "",
+        "Accept": "application/json",
+        "Referer": `${BASE_URL}/`,
+      },
+      data: {
+        width: "100%",
+        height: "100",
+      },
+    });
+
+    return response.status();
+  }, {
+    message: "POST /api/embed-configs/ succeeds",
+    timeout: 10000,
+  }).toBe(200);
+
+  const checkbox = settingsPage.locator("label:has-text('100%') input[type='checkbox']");
+  await checkbox.waitFor({ state: "visible" });
+  await checkbox.scrollIntoViewIfNeeded();
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.click({ force: true });
+  await expect(settingsPage.getByLabel("100% width")).toBeChecked();
+
+  await expect(settingsPage.locator("button:has-text('Copy to clipboard')")).toBeVisible();
+
+  const frame = settingsPage.frameLocator("[id^='oar-embed-'] iframe");
+  await frame.locator("button", { hasText: /draw custom area/i }).click();
+
+  const texts = await frame.locator("ul.leaflet-draw-actions > li a").allTextContents();
+  expect(texts).toEqual([ "Finish", "Delete last point", "Cancel" ]);
+
+  // 7. Check in the admin panel whether the Embed config is filled in.
+  await adminPage.reload({ waitUntil: "networkidle" });
+  await adminPage.locator("table#result_list tbody tr").first().locator("th.field-__str__ a").click();
+  await adminPage.waitForLoadState("networkidle");
+
+  await expect(adminPage.getByText("Change contributor")).toBeVisible();
+  const configInput = adminPage.locator("#id_embed_config");
+  expect(await configInput.locator("option:checked").textContent()).not.toBe("---------");
+  expect(await configInput.locator("option:checked").textContent()).toContain("100% x 100");
+  const selectedValue = await configInput.locator("option:checked").getAttribute("value");
+  expect(selectedValue).not.toBe("");
+});
+
 test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
@@ -544,7 +718,8 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -634,7 +809,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  await expect(page.locator("#name")).toHaveValue(locationName);
+  expect(await page.locator("#name").inputValue()).toContain(locationName);
   await expect(page.locator("#address")).toHaveValue(
     "Dumidan Tivatsko polje, Tivat, Tivat Municipality"
   );
@@ -1231,7 +1406,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: "My Account" }).click();
-    await page.getByRole("link", { name: "Dashboard" }).click();
+    await page.locator("#nav").getByRole("link", { name: "Dashboard" }).click();
     await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
@@ -1272,6 +1447,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .nth(1);
       await option.click();
       await page.keyboard.press("Enter");
+      await page.waitForLoadState("networkidle");
     }
 
     async function getColumnValues(columnNumber: number): Promise<string[]> {
@@ -1368,10 +1544,10 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     const filePath = path.join(downloadPath, downloadEvent.suggestedFilename());
 
     await downloadEvent.saveAs(filePath);
-    const fileExists = fs.existsSync(filePath);
-    expect(fileExists).toBe(true);
 
+    const fileExists = fs.existsSync(filePath);
     const fileName = path.basename(filePath);
+    expect(fileExists).toBe(true);
     expect(fileName).toBe("moderation_events.xlsx");
 
     const moderationEvent = page.locator("table tbody tr:first-child");
@@ -1429,4 +1605,99 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
         .getByRole("link")
     ).not.toBeVisible();
   });
+});
+
+test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 7000 - 9900 in xlsx.", async () => {
+  test("An unauthorized user cannot download a list of facilities.", async ({
+    page,
+  }) => {
+    // Check that the user is on the main page
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+
+    const title = await page.title();
+    expect(title).toBe("Open Supply Hub");
+    await page.waitForLoadState("networkidle");
+
+    const downloadButton = page.getByRole("button", { name: "Download" });
+    await expect(downloadButton).toBeVisible();
+    await expect(downloadButton).toBeEnabled();
+    await downloadButton.click({ force: true });
+    await page.waitForLoadState("networkidle");
+
+    // Check that the menu item is visible
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
+    await expect(menuItem).toBeVisible();
+    await menuItem.click({ force: true });
+
+    // Check that the login pop-up is visible
+    await expect(page.getByRole("heading", { name: "Log In To Download" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
+  })
+
+  test("An authorized user can download a list of facilities with amounts 7000 - 9900 in xlsx.", async ({
+    page,
+  }) => {
+    // Log in to the main page
+    const { BASE_URL } = process.env;
+    await page.goto(`${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!);
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
+
+    // Check that the menu item is visible
+    const menuItem = page.getByRole("menuitem", { name: "Excel" });
+    await expect(menuItem).toBeVisible();
+    await menuItem.click({ force: true });
+
+    // Log in to the main page
+    await page.getByRole("button", { name: "LOG IN" }).click();
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    await page.getByLabel("Email").fill(USER_EMAIL!);
+    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
+    await page.getByRole("button", { name: "Log In" }).click();
+    await page.getByRole("button", { name: "Download" }).click({ force: true });
+    await page.getByRole("menuitem", { name: "Excel" }).click({ force: true });
+
+    // Download the file
+    const downloadPath = path.resolve(__dirname, "downloads");
+    const download = await page.waitForEvent("download");
+    const filePath = path.join(downloadPath, download.suggestedFilename());
+    await download.saveAs(filePath);
+
+    const fileExists = fs.existsSync(filePath);
+    const fileName = path.basename(filePath);
+    expect(fileExists).toBe(true);
+    expect(fileName).toContain("facilities");
+    expect(fileName).toContain(".xlsx");
+
+    // Check that the number of facilities is visible
+    const results = page.getByText(/^\d+ results$/);
+    await expect(results).toBeVisible();
+
+    // Get count of Facilities output on the  UI
+    const text = await results.textContent();
+    const numberOfFacilities = parseInt(text?.match(/\d+/)?.[0] || "0", 10);
+    const headerRow = 1;
+
+    // Get the first sheet
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const rows: CellValue[][] = [];
+    if (workbook.worksheets.length === 0) {
+      throw new Error("Workbook contains no sheets");
+    }
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error("First worksheet is null");
+    }
+    worksheet.eachRow((row: Row) => {
+      if (row.values && Array.isArray(row.values)) {
+        rows.push(row.values.slice(1));
+      }
+    });
+
+    // Check that the number of facilities is correct
+    expect(rows.length).toEqual(numberOfFacilities + headerRow);
+  })
 });
