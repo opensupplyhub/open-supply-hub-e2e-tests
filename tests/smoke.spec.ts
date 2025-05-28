@@ -139,7 +139,7 @@ const uploadScenarios = [
     fileName: "DO_NOT_APPROVE test release.csv",
     listName: "DO NOT APPROVE test release CSV",
     description: "DO NOT APPROVE Test CSV upload",
-    errorText: "Could not find a country code for 'Sp'ain'.",
+    errorText: ["Could not find a country code for 'Sp'ain'."],
     numberOfErrors: 1,
   },
   {
@@ -148,7 +148,10 @@ const uploadScenarios = [
     fileName: "DO_NOT_APPROVE test release.xlsx",
     listName: "DO NOT APPROVE test release XLSX",
     description: "DO NOT APPROVE Test XLSX upload",
-    errorText: "Could not find a country code for 'A'ustralia'.",
+    errorText: [
+      "Could not find a country code for 'A'ustralia'.",
+      "There is a problem with the address: Ensure this value has at most 200 characters. (it has 228)"
+    ],
     numberOfErrors: 2,
   },
 ];
@@ -391,7 +394,7 @@ uploadScenarios.forEach(
           window.scrollBy(0, 100); // scroll down 100px
         });
 
-        await page.locator(".select__value-container").click();
+        await page.locator(".select__value-container").click();//
         await page.locator(".select__option:has-text('ERROR_PARSING')").click();
         await expect(page.locator(".select__multi-value__label")).toHaveText(
           /ERROR_PARSING/
@@ -403,15 +406,15 @@ uploadScenarios.forEach(
         expect(errorRowsCount).toBe(numberOfErrors);
 
         for (let i = 0; i < errorRowsCount; i++) {
-          await errorRows.nth(i).click();
+          await page.evaluate(() => window.scrollBy(0, 100));
+          // Click the row with a small delay before
+          await errorRows.nth(i).click({ force: true, timeout: 5000 });
+
+          await expect(page.locator("text=Errors")).toBeVisible();
+          await expect(page.locator(`text=${errorText[i]}`)).toBeVisible();
+          // Close expanded row
+          await errorRows.nth(i).click({ force: true, timeout: 5000 });
         }
-
-        await page.evaluate(() => {
-          window.scrollBy(0, 100); // scroll down 100px
-        });
-
-        await expect(page.locator("text=Errors")).toBeVisible();
-        await expect(page.locator(`text=${errorText}`)).toBeVisible();
       });
 
       test(`The ${format} list validation before upload.`, async ({ page }) => {
