@@ -738,11 +738,11 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   let locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   
   if (`${BASE_URL}`.includes('test')) {
-    locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+    locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
   } else if (`${BASE_URL}`.includes('stage')) {
     locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   } else if (`${BASE_URL}`.includes('opensupplyhub')) {
-    locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+    locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
   } else {
     console.log(`Base URL: ${BASE_URL}`);
     locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
@@ -1353,15 +1353,13 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
 
         // Extract all numbers and check if any fall within the expected range
         
-        const texts = await slideOutPanel.locator("p").allTextContents();
-
-        const monthRegex =
-          /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
-
+        const texts = await slideOutPanel.locator("//div/p[1]").allTextContents();
+ 
         const workerCount = texts
-          .filter((text) => !monthRegex.test(text)) // exclude potential date strings
-          .map((text) => parseInt(text.replace(/,/g, "").trim(), 10))
+          .map((text) => parseInt(text.replace(/^.*?-/, '').replace(/,/g, "").trim(), 10))
           .find((num) => !isNaN(num) && num >= testCase.min && num <= testCase.max);
+        
+        console.log("workerCount:= ", workerCount);
 
         expect(
           workerCount,
@@ -1625,7 +1623,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
 
       expect(resp.status()).toBe(200);
       // Wait an extra 1 second for UI to render
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(2000);
       await page.waitForLoadState("networkidle");
     }
     await waitResponse();
