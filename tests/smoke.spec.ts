@@ -739,7 +739,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   
   if (`${BASE_URL}`.includes('test')) {
     locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
-  } else if (`${BASE_URL}`.includes('stage')) {
+  } else if (`${BASE_URL}`.includes('staging')) {
     locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   } else if (`${BASE_URL}`.includes('opensupplyhub')) {
     locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
@@ -1908,15 +1908,19 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
 });
 
 test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
-  if (process.env.ENVIRONMENT !== "production") {
-    test.skip(true, "Only runs in Production environment");
-  }
+   if (process.env.ENVIRONMENT !== "production") {
+     test.skip(true, "Only runs in Production environment");
+   }
 
   // Company name = link to the site
   const linksToSitesWhereCheckEM = [
     {
       name: "Nordstrom",
       url: "https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
+    },
+    {
+      name: "Reformation",
+      url: "https://www.thereformation.com/sustainability/factories.html?",
     },
     {
       name: "Levis",
@@ -1934,7 +1938,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
     {
       name: "Amazon",
       url: "https://sustainability.aboutamazon.com/human-rights/supply-chain",
-    },
+    }
   ];
 
   for (const { name, url } of linksToSitesWhereCheckEM) {
