@@ -737,11 +737,11 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
   let locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   
-  if (`${BASE_URL}`.includes('test')) {
+  if (`${BASE_URL}`.includes("test")) {
     locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
-  } else if (`${BASE_URL}`.includes('staging')) {
+  } else if (`${BASE_URL}`.includes("staging")) {
     locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
-  } else if (`${BASE_URL}`.includes('opensupplyhub')) {
+  } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
   } else {
     console.log(`Base URL: ${BASE_URL}`);
@@ -749,8 +749,6 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   }
 
   const locationCountry = "China";
-  const locationOSID = "CN20191926KJ0J6";
-
 
   await page.goto(`${BASE_URL}/contribute/single-location`!);
 
@@ -1356,7 +1354,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         const texts = await slideOutPanel.locator("//div/p[1]").allTextContents();
  
         const workerCount = texts
-          .map((text) => parseInt(text.replace(/^.*?-/, '').replace(/,/g, "").trim(), 10))
+          .map((text) => parseInt(text.replace(/^.*?-/, "").replace(/,/g, "").trim(), 10))
           .find((num) => !isNaN(num) && num >= testCase.min && num <= testCase.max);
         
         console.log("workerCount:= ", workerCount);
