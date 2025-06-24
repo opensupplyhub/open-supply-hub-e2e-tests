@@ -150,7 +150,7 @@ const uploadScenarios = [
     description: "DO NOT APPROVE Test XLSX upload",
     errorText: [
       "Could not find a country code for 'A'ustralia'.",
-      "There is a problem with the address: Ensure this value has at most 200 characters. (it has 228)"
+      "There is a problem with the address: Ensure this value has at most 200 characters. (it has 228)",
     ],
     numberOfErrors: 2,
   },
@@ -394,7 +394,7 @@ uploadScenarios.forEach(
           window.scrollBy(0, 100); // scroll down 100px
         });
 
-        await page.locator(".select__value-container").click();//
+        await page.locator(".select__value-container").click(); //
         await page.locator(".select__option:has-text('ERROR_PARSING')").click();
         await expect(page.locator(".select__multi-value__label")).toHaveText(
           /ERROR_PARSING/
@@ -735,17 +735,22 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   //Test data
   const locationName = "Zhejiang Celebrity Finery Co., Ltd";
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
-  let locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
-  
+  let locationAddressCheck =
+    "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+
   if (`${BASE_URL}`.includes("test")) {
-    locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
+    locationAddressCheck =
+      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
   } else if (`${BASE_URL}`.includes("staging")) {
-    locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+    locationAddressCheck =
+      "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
-    locationAddressCheck = "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
+    locationAddressCheck =
+      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
   } else {
     console.log(`Base URL: ${BASE_URL}`);
-    locationAddressCheck = "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+    locationAddressCheck =
+      "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   }
 
   const locationCountry = "China";
@@ -797,9 +802,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
   expect(isNotSelected).toBe("false");
 
   await page.getByPlaceholder("Type a name").fill(locationName);
-  await page
-    .getByPlaceholder("Address")
-    .fill(locationAddress);
+  await page.getByPlaceholder("Address").fill(locationAddress);
 
   async function selectOption(id: string, optionID: string) {
     await page.evaluate(() => window.scrollTo(0, 300));
@@ -934,9 +937,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
   expect(await page.locator("#name").inputValue()).toContain(locationName);
-  await expect(page.locator("#address")).toHaveValue(
-  locationAddressCheck
-  );
+  await expect(page.locator("#address")).toHaveValue(locationAddressCheck);
 
   await expect(page.locator("#country")).toHaveText("China");
   await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
@@ -1311,16 +1312,20 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       // Check first value than Click the "more entries" button inside the first "Number of workers" section
       let text: string | null = null;
 
-      const primaryLocator = page.locator("//p[text()='Number of Workers']/../../div[2]/div[2]/p[1]");
-      if (await primaryLocator.count() > 0) {
+      const primaryLocator = page.locator(
+        "//p[text()='Number of Workers']/../../div[2]/div[2]/p[1]"
+      );
+      if ((await primaryLocator.count()) > 0) {
         text = await primaryLocator.textContent();
       } else {
-        const fallbackLocator = page.locator("//p[text()='Number of Workers']/../../div[2]/div[1]/p[1]");
-        if (await fallbackLocator.count() > 0) {
+        const fallbackLocator = page.locator(
+          "//p[text()='Number of Workers']/../../div[2]/div[1]/p[1]"
+        );
+        if ((await fallbackLocator.count()) > 0) {
           text = await fallbackLocator.textContent();
         }
       }
-      
+
       if (!text) {
         throw new Error("❌ Could not find 'Number of Workers' value.");
       }
@@ -1329,7 +1334,6 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       const numWorkers = Number(text?.trim());
       console.log("value:= ", numWorkers);
 
-
       if (numWorkers >= testCase.min && numWorkers <= testCase.max) {
         console.log(`Value ${numWorkers} is within the range.`);
       } else {
@@ -1337,7 +1341,9 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
           .locator("text=Number of workers")
           .first()
           .locator("xpath=../../..");
-        const moreButton = workersSection.locator('button:has-text("entry"), button:has-text("entries")');
+        const moreButton = workersSection.locator(
+          'button:has-text("entry"), button:has-text("entries")'
+        );
         await moreButton.click();
 
         // Wait for the slide-out panel
@@ -1350,13 +1356,19 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         await slideOutPanel.waitFor({ state: "visible" });
 
         // Extract all numbers and check if any fall within the expected range
-        
-        const texts = await slideOutPanel.locator("//div/p[1]").allTextContents();
- 
+
+        const texts = await slideOutPanel
+          .locator("//div/p[1]")
+          .allTextContents();
+
         const workerCount = texts
-          .map((text) => parseInt(text.replace(/^.*?-/, "").replace(/,/g, "").trim(), 10))
-          .find((num) => !isNaN(num) && num >= testCase.min && num <= testCase.max);
-        
+          .map((text) =>
+            parseInt(text.replace(/^.*?-/, "").replace(/,/g, "").trim(), 10)
+          )
+          .find(
+            (num) => !isNaN(num) && num >= testCase.min && num <= testCase.max
+          );
+
         console.log("workerCount:= ", workerCount);
 
         expect(
@@ -1471,15 +1483,19 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       // Check first value, if is doesn't match the expected facility type, Click the "more entries" button inside the first "Facility Type" block
       let text: string | null = null;
 
-      const primaryLocator = page.locator("//p[text()='Facility Type']/../../div[2]/div[1]/p[1]");
+      const primaryLocator = page.locator(
+        "//p[text()='Facility Type']/../../div[2]/div[1]/p[1]"
+      );
       text = await primaryLocator.textContent();
       console.log("Facility Type:= ", text);
-      
+
       const facilityTypeByLocator = text?.trim();
 
       //---
       if (facilityTypeByLocator?.includes(facilityType)) {
-        console.log(`Value ${facilityTypeByLocator} is mached with searching value.`);
+        console.log(
+          `Value ${facilityTypeByLocator} is mached with searching value.`
+        );
       } else {
         const facilityTypeSection = page
           .locator("text=Facility Type")
@@ -1502,21 +1518,23 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       }
       //--
 
-
-
       // Expand and assert Worker Range
       // Check first value than Click the "more entries" button inside the first "Number of workers" section
 
-      const workersSection = page.locator("//p[text()='Number of Workers']/../../div[2]/div[2]/p[1]");
-      if (await workersSection.count() > 0) {
+      const workersSection = page.locator(
+        "//p[text()='Number of Workers']/../../div[2]/div[2]/p[1]"
+      );
+      if ((await workersSection.count()) > 0) {
         text = await workersSection.textContent();
       } else {
-        const fallbackLocator = page.locator("//p[text()='Number of Workers']/../../div[2]/div[1]/p[1]");
-        if (await fallbackLocator.count() > 0) {
+        const fallbackLocator = page.locator(
+          "//p[text()='Number of Workers']/../../div[2]/div[1]/p[1]"
+        );
+        if ((await fallbackLocator.count()) > 0) {
           text = await fallbackLocator.textContent();
         }
       }
-      
+
       if (!text) {
         throw new Error("❌ Could not find 'Number of Workers' value.");
       }
@@ -1525,7 +1543,6 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       const numWorkers = Number(text?.trim());
       console.log("value:= ", numWorkers);
 
-
       if (numWorkers >= workerRange.min && numWorkers <= workerRange.max) {
         console.log(`Value ${numWorkers} is within the range.`);
       } else {
@@ -1533,7 +1550,9 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
           .locator("text=Number of workers")
           .first()
           .locator("xpath=../../..");
-        const moreButton = workersSection.locator('button:has-text("entry"), button:has-text("entries")');
+        const moreButton = workersSection.locator(
+          'button:has-text("entry"), button:has-text("entries")'
+        );
         await moreButton.click();
 
         // Wait for the slide-out panel
@@ -1546,7 +1565,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         await slideOutPanel.waitFor({ state: "visible" });
 
         // Extract all numbers and check if any fall within the expected range
-        
+
         const texts = await slideOutPanel.locator("p").allTextContents();
 
         const monthRegex =
@@ -1555,7 +1574,10 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         const workerCount = texts
           .filter((text) => !monthRegex.test(text)) // exclude potential date strings
           .map((text) => parseInt(text.replace(/,/g, "").trim(), 10))
-          .find((num) => !isNaN(num) && num >= workerRange.min && num <= workerRange.max);
+          .find(
+            (num) =>
+              !isNaN(num) && num >= workerRange.min && num <= workerRange.max
+          );
 
         expect(
           workerCount,
@@ -1906,9 +1928,9 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
 });
 
 test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
-   if (process.env.ENVIRONMENT !== "production") {
-     test.skip(true, "Only runs in Production environment");
-   }
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
 
   // Company name = link to the site
   const linksToSitesWhereCheckEM = [
@@ -1936,7 +1958,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
     {
       name: "Amazon",
       url: "https://sustainability.aboutamazon.com/human-rights/supply-chain",
-    }
+    },
   ];
 
   for (const { name, url } of linksToSitesWhereCheckEM) {
