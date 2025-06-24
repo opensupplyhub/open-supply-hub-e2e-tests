@@ -7,9 +7,9 @@ export const facilityProcessingTypes = {
       facilityType: { type: "string" },
       processingTypes: {
         type: "array",
-        items: { type: "string" }
-      }
+        items: { type: "string" },
+      },
     },
-    additionalProperties: false
-  }
+    additionalProperties: false,
+  },
 };

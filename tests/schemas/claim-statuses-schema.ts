@@ -1,6 +1,1 @@
-export const claimStatuses = [
-  "PENDING",
-  "APPROVED",
-  "DENIED",
-  "REVOKED"
-];
+export const claimStatuses = ["PENDING", "APPROVED", "DENIED", "REVOKED"];

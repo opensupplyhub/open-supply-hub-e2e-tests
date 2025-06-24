@@ -7,8 +7,8 @@ export const moderationEventsMerge = {
       current_id: { type: "string" },
       original_id: { type: "string" },
       created_at: { type: "string", format: "date-time" },
-      merge_date: { type: "string", format: "date-time" }
+      merge_date: { type: "string", format: "date-time" },
     },
-    additionalProperties: false
-  }
+    additionalProperties: false,
+  },
 };

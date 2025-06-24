@@ -6,7 +6,7 @@ export const parentCompanies = {
     maxItems: 2,
     items: [
       { anyOf: [{ type: "integer" }, { type: "string" }] },
-      { type: "string" }
-    ]
-  }
+      { type: "string" },
+    ],
+  },
 };

@@ -1,6 +1,6 @@
 export const sectors = {
   type: "array",
   items: {
-    type: "string"
-  }
+    type: "string",
+  },
 };
