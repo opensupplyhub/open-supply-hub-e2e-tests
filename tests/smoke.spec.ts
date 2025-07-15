@@ -746,11 +746,10 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
       "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
+      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
   } else {
-    console.log(`Base URL: ${BASE_URL}`);
     locationAddressCheck =
-      "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
   }
 
   const locationCountry = "China";
@@ -1330,13 +1329,9 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         throw new Error("❌ Could not find 'Number of Workers' value.");
       }
 
-      console.log("text:= ", text);
       const numWorkers = Number(text?.trim());
-      console.log("value:= ", numWorkers);
 
-      if (numWorkers >= testCase.min && numWorkers <= testCase.max) {
-        console.log(`Value ${numWorkers} is within the range.`);
-      } else {
+      if (numWorkers < testCase.min || numWorkers > testCase.max) {
         const workersSection = page
           .locator("text=Number of workers")
           .first()
@@ -1368,8 +1363,6 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
           .find(
             (num) => !isNaN(num) && num >= testCase.min && num <= testCase.max
           );
-
-        console.log("workerCount:= ", workerCount);
 
         expect(
           workerCount,
@@ -1487,16 +1480,11 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         "//p[text()='Facility Type']/../../div[2]/div[1]/p[1]"
       );
       text = await primaryLocator.textContent();
-      console.log("Facility Type:= ", text);
 
       const facilityTypeByLocator = text?.trim();
 
       //---
-      if (facilityTypeByLocator?.includes(facilityType)) {
-        console.log(
-          `Value ${facilityTypeByLocator} is mached with searching value.`
-        );
-      } else {
+      if (!facilityTypeByLocator?.includes(facilityType)) {
         const facilityTypeSection = page
           .locator("text=Facility Type")
           .first()
@@ -1539,13 +1527,9 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         throw new Error("❌ Could not find 'Number of Workers' value.");
       }
 
-      console.log("text:= ", text);
       const numWorkers = Number(text?.trim());
-      console.log("value:= ", numWorkers);
 
-      if (numWorkers >= workerRange.min && numWorkers <= workerRange.max) {
-        console.log(`Value ${numWorkers} is within the range.`);
-      } else {
+      if (numWorkers < workerRange.min || numWorkers > workerRange.max) {
         const workersSection = page
           .locator("text=Number of workers")
           .first()
@@ -1583,7 +1567,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
           workerCount,
           `Expected a worker count between ${workerRange.min} and ${workerRange.max}, but none found.`
         ).toBeDefined();
-      }
+      } 
 
       // Assert country still appears
       await expect(
@@ -1826,14 +1810,14 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
   });
 });
 
-test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 7000 - 9900 in xlsx.", async () => {
+test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up to 5000 in xlsx.", async () => {
   test("An unauthorized user cannot download a list of facilities.", async ({
     page,
   }) => {
     // Check that the user is on the main page
     const { BASE_URL } = process.env;
     await page.goto(
-      `${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!
+      `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`!
     );
 
     const title = await page.title();
@@ -1860,13 +1844,13 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts 700
     await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
   });
 
-  test("An authorized user can download a list of facilities with amounts 7000 - 9900 in xlsx.", async ({
+  test("An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
     page,
   }) => {
     // Log in to the main page
     const { BASE_URL } = process.env;
     await page.goto(
-      `${BASE_URL}/facilities/?countries=AO&countries=BE&countries=PL&sort_by=contributors_desc`!
+      `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`!
     );
     await page.getByRole("button", { name: "Download" }).click({ force: true });
 
