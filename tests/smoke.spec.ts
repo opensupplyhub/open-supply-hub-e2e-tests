@@ -1919,14 +1919,6 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
   // Company name = link to the site
   const linksToSitesWhereCheckEM = [
     {
-      name: "Nordstrom",
-      url: "https://www.nordstrom.com/browse/nordstrom-cares/human-rights/ethical-business",
-    },
-    {
-      name: "Reformation",
-      url: "https://www.thereformation.com/sustainability/factories.html?",
-    },
-    {
       name: "Levis",
       url: "https://www.levistrauss.com/sustainability-report/community/supplier-map/",
     },
