@@ -1,6 +1,9 @@
 import { test, expect, chromium, Frame } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
+import { LoginPage } from "./pages/LoginPage";
+import { MainPage } from "./pages/MainPage";
+import { AdminPage } from "./pages/AdminPage";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -8,90 +11,47 @@ import ExcelJS, { Row, CellValue } from "exceljs";
 
 test.beforeAll(setup);
 
-test("OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
+test("[@smoke] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
   page,
-}) => {
-  const { BASE_URL } = process.env;
-  await page.goto(BASE_URL!);
+  }) => {
+    const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
+  
+  const loginPage = new LoginPage(page, BASE_URL!);
+  const mainPage = new MainPage(page, BASE_URL!);
 
-  // make sure that we are on the main page
-  const title = await page.title();
-  expect(title).toBe("Open Supply Hub");
+  // Navigate to main page and verify title
+  await mainPage.goto();
+  await mainPage.verifyPageTitle();
 
-  // navigate to the login pages
-  await page.getByRole("button", { name: "Accept" }).click();
-  await page.getByRole("link", { name: "Login/Register" }).click();
+  // Login to main page
+  await loginPage.loginToMainPage(USER_EMAIL!, USER_PASSWORD!);
 
-  // fill in login credentials
-  const { USER_EMAIL, USER_PASSWORD } = process.env;
-  await page.getByLabel("Email Address").fill(USER_EMAIL!);
-  await page.getByLabel("Password", { exact: true }).fill(USER_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
-  await expect(page.getByRole("button", { name: "My Account" })).toBeVisible();
+  // Verify successful login
+  await loginPage.verifyMainPageLogin(USER_EMAIL!);
 
-  // make sure that we have successfully logged in
-  await page.getByRole("button", { name: "My Account" }).click();
-  await page.getByRole("link", { name: "Settings" }).click();
-  await page.isVisible(`text=${USER_EMAIL}`);
-  await page.getByRole("button", { name: "My Account" }).click();
-
-  // log the user out and make sure we are logged out
-  await page.getByRole("button", { name: "Log Out" }).click();
-  await expect(page.getByText("text=My Account")).not.toBeVisible();
-  await page.waitForResponse(
-    async (resp) => resp.url().includes("/user-logout/") && resp.status() == 204
-  );
-  await expect(page.getByText("Login/Register")).toBeVisible();
+  // Logout and verify logout
+  await loginPage.logoutFromMainPage();
 });
 
-test("OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", async ({
+test("[@smoke] OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", async ({
   page,
-}) => {
-  const { BASE_URL } = process.env;
-  await page.goto(`${BASE_URL}/admin/`);
+  }) => {
+    const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  
+  const loginPage = new LoginPage(page, BASE_URL!);
 
-  // make sure that we are on the login page of Admin Dashboard
-  const title = await page.title();
-  expect(title).toBe("Log in | Django site admin");
-  await expect(page.getByText("Open Supply Hub Admin")).toBeVisible();
+  // Login to admin panel
+  await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
-  // fill in login credentials
-  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-  await page.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
+  // Verify successful admin login
+  await loginPage.verifyAdminPanelLogin(USER_ADMIN_EMAIL!);
 
-  // make sure that we have successfully logged in
-  await expect(
-    page.getByRole("link", { name: "Open Supply Hub Admin" })
-  ).toBeVisible();
-  await expect(page.getByText("Site administration")).toBeVisible();
-  await expect(
-    page.getByRole("table", { name: "Api" }).getByRole("caption")
-  ).toBeVisible();
-  await expect(
-    page
-      .getByRole("table", { name: "Authentication and Authorization" })
-      .getByRole("caption")
-  ).toBeVisible();
-  await expect(
-    page.getByRole("table", { name: "django-waffle" }).getByRole("caption")
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Log out" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Recent actions" })
-  ).toBeVisible();
-
-  // log the user out and make sure we are logged out
-  await page.getByRole("link", { name: "Log out" }).click();
-  await expect(
-    page.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)
-  ).not.toBeVisible();
-  await expect(page.getByText("Log in again")).toBeVisible();
+  // Logout and verify logout
+  await loginPage.logoutFromAdminPanel();
 });
 
 test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an endpoint", () => {
-  test("Get list of facilities from `/facilities` endpoint", async ({
+  test("[@smoke] Get list of facilities from `/facilities` endpoint", async ({
     request,
   }) => {
     const response = await get(request, "/api/facilities/", {
@@ -122,7 +82,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     expect(firstFeature.properties).toHaveProperty("country_name");
   });
 
-  test("Get unauthorized response from `/facilities` endpoint", async ({
+  test("[@smoke] Get unauthorized response from `/facilities` endpoint", async ({
     request,
   }) => {
     const response = await get(request, "/api/facilities/", {
@@ -167,7 +127,7 @@ uploadScenarios.forEach(
     numberOfErrors,
   }) => {
     test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
-      test(`Successful list uploading in ${format} format.`, async ({
+      test(`[@smoke] Successful list uploading in ${format} format.`, async ({
         page,
       }) => {
         test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
@@ -417,7 +377,7 @@ uploadScenarios.forEach(
         }
       });
 
-      test(`The ${format} list validation before upload.`, async ({ page }) => {
+      test(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
         const { BASE_URL } = process.env;
         await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -495,7 +455,7 @@ uploadScenarios.forEach(
   }
 );
 
-test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
+test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
   const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
   const context = await browser.newContext();
 
@@ -504,72 +464,30 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   await context.clearPermissions();
 
   // Open the admin page
-  const adminPage = await context.newPage();
-  // 1. Check your user in the admin panel
-  const { BASE_URL } = process.env;
-  await adminPage.goto(`${BASE_URL}/admin/api/contributor/`!);
+  const adminPageInstance = await context.newPage();
+  const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+  
+  const loginPage = new LoginPage(adminPageInstance, BASE_URL!);
+  const adminPage = new AdminPage(adminPageInstance, BASE_URL!);
 
-  // make sure that we are on the login page of Admin Dashboard
-  const title = await adminPage.title();
-  expect(title).toBe("Log in | Django site admin");
-  await expect(adminPage.getByText("Open Supply Hub Admin")).toBeVisible();
-
-  // fill in login credentials
-  const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
-  await adminPage.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-  await adminPage.getByLabel("Password").fill(USER_ADMIN_PASSWORD!);
-  await adminPage.getByRole("button", { name: "Log In" }).click();
-  await expect(
-    adminPage.getByText(`Welcome, ${USER_ADMIN_EMAIL}`)
-  ).toBeVisible();
-
-  // make sure that we have successfully logged in
-  await expect(
-    adminPage.getByRole("link", { name: "Open Supply Hub Admin" })
-  ).toBeVisible();
-  await expect(
-    adminPage.getByText("Select contributor to change")
-  ).toBeVisible();
-  const searchInput = adminPage.getByRole("textbox", { name: "Search" });
-  await searchInput.fill(USER_ADMIN_EMAIL!);
-  await adminPage.getByRole("button", { name: "Search" }).click();
-  await adminPage.waitForLoadState("networkidle");
-
-  const firstRowLink = adminPage
-    .locator("table#result_list tbody tr")
-    .first()
-    .locator("th.field-__str__ a");
-  await firstRowLink.click();
-  await adminPage.waitForLoadState("networkidle");
-
-  await expect(adminPage.getByText("Change contributor")).toBeVisible();
-  const adminInput = adminPage.locator("#id_admin");
-  expect(await adminInput.locator("option:checked").textContent()).toBe(
-    USER_ADMIN_EMAIL
-  );
+  // 1. Login to admin panel and check user
+  await adminPage.gotoContributors();
+  await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+  await adminPage.expectSelectContributorPage();
+  
+  await adminPage.searchContributor(USER_ADMIN_EMAIL!);
+  await adminPage.clickFirstContributor();
+  await adminPage.expectChangeContributorPage();
+  await adminPage.expectAdminEmail(USER_ADMIN_EMAIL!);
 
   // 2. Delete Embed config and Embed level
-  const embedConfigInput = adminPage.locator("#id_embed_config");
-  const embedLevelInput = adminPage.locator("#id_embed_level");
-
-  await embedConfigInput.selectOption("");
-  await embedLevelInput.selectOption("");
-  expect(await embedConfigInput.locator("option:checked").textContent()).toBe(
-    "---------"
-  );
-  expect(await embedLevelInput.locator("option:checked").textContent()).toBe(
-    "---------"
-  );
-
-  await adminPage.locator("input[type='submit'][value='Save']").click();
-  await adminPage.waitForLoadState("networkidle");
-
-  await expect(adminPage.getByText("The contributor")).toBeVisible();
-  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+  await adminPage.clearEmbedConfiguration();
+  await adminPage.saveChanges();
+  await adminPage.expectSuccessMessage();
 
   // 3. Check User settings
   const settingsPage = await context.newPage();
-  await settingsPage.goto(`${BASE_URL}/settings/`!);
+  await settingsPage.goto(`${BASE_URL}/settings/`);
   await settingsPage.locator("button:has-text('Embed')").click();
   await settingsPage.waitForLoadState("networkidle");
 
@@ -597,22 +515,10 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
   ).toBeVisible();
 
   // 4. Return to the admin panel and set to the user Embed level = Embed Delux/Custom Embed
-  await firstRowLink.click();
-  await adminPage.waitForLoadState("networkidle");
-
-  await adminPage.locator("#id_embed_level").selectOption("3");
-  expect(
-    await adminPage
-      .locator("#id_embed_level")
-      .locator("option:checked")
-      .textContent()
-  ).toBe("Embed Deluxe / Custom Embed");
-
-  await adminPage.locator("input[type='submit'][value='Save']").click();
-  await adminPage.waitForLoadState("networkidle");
-
-  await expect(adminPage.getByText("The contributor")).toBeVisible();
-  await expect(adminPage.getByText("was changed successfully.")).toBeVisible();
+  await adminPage.clickFirstContributor();
+  await adminPage.setEmbedLevelToDeluxe();
+  await adminPage.saveChanges();
+  await adminPage.expectSuccessMessage();
 
   // 5. The user should see the form with settings for the embedded map
   await settingsPage.reload({ waitUntil: "networkidle" });
@@ -705,30 +611,13 @@ test("OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async (
     .allTextContents();
   expect(texts).toEqual(["Finish", "Delete last point", "Cancel"]);
 
-  // 7. Check in the admin panel whether the Embed config is filled in.
-  await adminPage.reload({ waitUntil: "networkidle" });
-  await adminPage
-    .locator("table#result_list tbody tr")
-    .first()
-    .locator("th.field-__str__ a")
-    .click();
-  await adminPage.waitForLoadState("networkidle");
-
-  await expect(adminPage.getByText("Change contributor")).toBeVisible();
-  const configInput = adminPage.locator("#id_embed_config");
-  expect(await configInput.locator("option:checked").textContent()).not.toBe(
-    "---------"
-  );
-  expect(await configInput.locator("option:checked").textContent()).toContain(
-    "100% x 100"
-  );
-  const selectedValue = await configInput
-    .locator("option:checked")
-    .getAttribute("value");
-  expect(selectedValue).not.toBe("");
+  // 7. Check in the admin panel whether the Embed config is filled in
+  await adminPageInstance.reload({ waitUntil: "networkidle" });
+  await adminPage.clickFirstContributor();
+  await adminPage.expectEmbedConfigCreated();
 });
 
-test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
   const { BASE_URL } = process.env;
@@ -740,7 +629,7 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
 
   if (`${BASE_URL}`.includes("test")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang 322002";
+      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
   } else if (`${BASE_URL}`.includes("staging")) {
     locationAddressCheck =
       "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
@@ -990,11 +879,12 @@ test("OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and 
 });
 
 test.describe("OSDEV-1232: Home page search combinations", () => {
-  test("OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
+  test("[@smoke] OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
     const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await page.goto(BASE_URL!);
+    await mainPage.goto();
 
     // Define an invalid search query
     const invalidSearchQuery = "invalid ABRACADABRA";
@@ -1015,11 +905,12 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     await expect(page.getByText("No facilities matching this")).toBeVisible();
   });
 
-  test("OSDEV-1232: Facilities. Valid search", async ({ page }) => {
+  test("[@smoke] OSDEV-1232: Facilities. Valid search", async ({ page }) => {
     const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await page.goto(BASE_URL!);
+    await mainPage.goto();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re";
@@ -1051,11 +942,12 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     await expect(page.getByText(validSearchQuery).first()).toBeVisible();
   });
 
-  test("OSDEV-1232: Facilities. OSID search", async ({ page }) => {
+  test("[@smoke] OSDEV-1232: Facilities. OSID search", async ({ page }) => {
     const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await page.goto(BASE_URL!);
+    await mainPage.goto();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re"; //
@@ -1112,7 +1004,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   countryTestCases.forEach((countryName) => {
-    test(`OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({
+    test(`[@smoke] OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1166,7 +1058,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   facilityTypeTestCases.forEach((facilityType) => {
-    test(`OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({
+    test(`[@smoke] OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1263,7 +1155,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   workerRangeTestCases.forEach((testCase) => {
-    test(`OSDEV-1232: Facilities. Filter by Number of Workers - ${testCase.range}`, async ({
+    test(`[@smoke] OSDEV-1232: Facilities. Filter by Number of Workers - ${testCase.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1394,7 +1286,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   combinedFilterTestCases.forEach(({ country, facilityType, workerRange }) => {
-    test(`OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`, async ({
+    test(`[@smoke] OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1578,7 +1470,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
 });
 
 test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager.", () => {
-  test("A moderator is able to work with the Moderation Queue page.", async ({
+  test("[@smoke] A moderator is able to work with the Moderation Queue page.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -1769,7 +1661,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     ).toBeVisible();
   });
 
-  test("A regular user does not have an access to the Moderation Queue page.", async ({
+  test("[@smoke] A regular user does not have an access to the Moderation Queue page.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -1811,40 +1703,29 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
 });
 
 test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up to 5000 in xlsx.", async () => {
-  test("An unauthorized user cannot download a list of facilities.", async ({
+  test("[@smoke] An unauthorized user cannot download a list of facilities.", async ({
     page,
   }) => {
-    // Check that the user is on the main page
     const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
+    
+    // Navigate to facilities page with specific filters
     await page.goto(
-      `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`!
+      `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`
     );
 
     const title = await page.title();
     expect(title).toBe("Open Supply Hub");
     await page.waitForLoadState("networkidle");
 
-    const downloadButton = page.getByRole("button", { name: "Download" });
-    await expect(downloadButton).toBeVisible();
-    await expect(downloadButton).toBeEnabled();
-    await downloadButton.click({ force: true });
-    await page.waitForLoadState("networkidle");
-
-    // Check that the menu item is visible
-    const menuItem = page.getByRole("menuitem", { name: "Excel" });
-    await expect(menuItem).toBeVisible();
-    await menuItem.click({ force: true });
+    // Attempt to download facilities
+    await mainPage.downloadFacilitiesExcel();
 
     // Check that the login pop-up is visible
-    await expect(
-      page.getByRole("heading", { name: "Log In To Download" })
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "CANCEL" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "REGISTER" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "LOG IN" })).toBeVisible();
+    await mainPage.expectDownloadLoginPrompt();
   });
 
-  test("An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
+  test("[@smoke] An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
     page,
   }) => {
     // Log in to the main page
@@ -1946,7 +1827,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
   ];
 
   for (const { name, url } of linksToSitesWhereCheckEM) {
-    test(`Check embedded maps on ${name} website.`, async ({ page }) => {
+    test(`[@smoke] Check embedded maps on ${name} website.`, async ({ page }) => {
       await page.goto(url, { waitUntil: "networkidle" });
       await page.waitForLoadState("load"); // fires when all resources are loaded
       await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
