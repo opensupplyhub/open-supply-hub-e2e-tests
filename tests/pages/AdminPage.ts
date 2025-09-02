@@ -5,14 +5,18 @@ export class AdminPage extends BasePage {
   // Locators
   private contributorTable = () => this.page.locator("table#result_list tbody tr");
   private firstRowLink = () => this.contributorTable().first().locator("th.field-__str__ a");
+  private firstRowLinkDownloadLimit = () => this.page.locator("table#result_list tbody tr:first-child th a");
+  private freeDownloadRecordsInput = () => this.page.locator("#id_free_download_records");
   private searchInput = () => this.page.getByRole("textbox", { name: "Search" });
   private searchButton = () => this.page.getByRole("button", { name: "Search" });
   private changeContributorHeading = () => this.page.getByText("Change contributor");
+  private changeDownloadLimitHeading = () => this.page.getByText("Change facility download limit");
   private adminInput = () => this.page.locator("#id_admin");
   private embedConfigInput = () => this.page.locator("#id_embed_config");
   private embedLevelInput = () => this.page.locator("#id_embed_level");
   private saveButton = () => this.page.locator("input[type='submit'][value='Save']");
-  private successMessage = () => this.page.getByText("The contributor").and(this.page.getByText("was changed successfully."));
+  private successMessageForContributor = () => this.page.getByText("The contributor").and(this.page.getByText("was changed successfully."));
+  private successMessageForDownloadLimit = () => this.page.getByText("The facility download limit").and(this.page.getByText("was changed successfully."));
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -35,6 +39,10 @@ export class AdminPage extends BasePage {
 
   async expectChangeContributorPage() {
     await this.expectToBeVisible(this.changeContributorHeading());
+  }
+
+  async expectChangeDownloadLimitHeading() {
+    await this.expectToBeVisible(this.changeDownloadLimitHeading());
   }
 
   async expectAdminEmail(email: string) {
@@ -68,16 +76,20 @@ export class AdminPage extends BasePage {
     await this.waitForLoadState();
   }
 
-  async expectSuccessMessage() {
-    await this.expectToBeVisible(this.successMessage());
+  async expectSuccessMessageForContributor() {
+    await this.expectToBeVisible(this.successMessageForContributor());
+  }
+
+  async expectSuccessMessageForDownloadLimit() {
+    await this.expectToBeVisible(this.successMessageForDownloadLimit());
   }
 
   async expectEmbedConfigCreated() {
-    const configInput = this.embedConfigInput();
-    await this.expectToHaveText(configInput.locator("option:checked"), "100% x 100");
-    
-    const selectedValue = await configInput.locator("option:checked").getAttribute("value");
+    const configInput = this.embedConfigInput();  
+    const selectedValue = await configInput.locator("option:checked").textContent();
+
     expect(selectedValue).not.toBe("");
+    expect(selectedValue).toContain("100% x 100");
   }
 
   async getEmbedConfigValue(): Promise<string> {
@@ -86,5 +98,31 @@ export class AdminPage extends BasePage {
 
   async expectSelectContributorPage() {
     await this.expectToBeVisible(this.page.getByText("Select contributor to change"));
+  }
+
+  async gotoDownloadLimits() {
+    await this.goto("/admin/api/facilitydownloadlimit/");
+  }
+
+  async expectDownloadLimitsPage() {
+    await this.expectToBeVisible(this.page.getByText("Select facility download limit to change"));
+  }
+
+  async searchUserDownloadLimit(email: string) {
+
+    await this.searchInput().fill(email);
+    await this.searchButton().click();
+    await this.waitForLoadState();
+  }
+
+  async clickFirstRowLinkDownloadLimit() {
+    await this.firstRowLinkDownloadLimit().click();
+    await this.waitForLoadState();
+  }
+
+  async setFreeDownloadRecords(value: string) {
+    await this.freeDownloadRecordsInput().fill(value);
+    await this.saveButton().click();
+    await this.waitForLoadState();
   }
 } 

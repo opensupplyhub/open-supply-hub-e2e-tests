@@ -471,8 +471,9 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   const adminPage = new AdminPage(adminPageInstance, BASE_URL!);
 
   // 1. Login to admin panel and check user
-  await adminPage.gotoContributors();
   await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+
+  await adminPage.gotoContributors();
   await adminPage.expectSelectContributorPage();
   
   await adminPage.searchContributor(USER_ADMIN_EMAIL!);
@@ -483,7 +484,7 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   // 2. Delete Embed config and Embed level
   await adminPage.clearEmbedConfiguration();
   await adminPage.saveChanges();
-  await adminPage.expectSuccessMessage();
+  await adminPage.expectSuccessMessageForContributor();
 
   // 3. Check User settings
   const settingsPage = await context.newPage();
@@ -518,7 +519,7 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   await adminPage.clickFirstContributor();
   await adminPage.setEmbedLevelToDeluxe();
   await adminPage.saveChanges();
-  await adminPage.expectSuccessMessage();
+  await adminPage.expectSuccessMessageForContributor();
 
   // 5. The user should see the form with settings for the embedded map
   await settingsPage.reload({ waitUntil: "networkidle" });
@@ -622,7 +623,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
 }) => {
   const { BASE_URL } = process.env;
   //Test data
-  const locationName = "Zhejiang Celebrity Finery Co., Ltd";
+  const locationName = "zhejiang celebrity finery co., Ltd";
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
   let locationAddressCheck =
     "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
@@ -636,6 +637,9 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
       "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+  } else if (`${BASE_URL}`.includes("preprod")) {
+    locationAddressCheck =
+      "17th Caiyun Road, Yinan industrial zone";
   } else {
     locationAddressCheck =
       "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
@@ -1728,8 +1732,38 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
   test("[@smoke] An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
     page,
   }) => {
+    const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
+    const context = await browser.newContext();
+
+    // Reset cookies and storage
+    await context.clearCookies();
+    await context.clearPermissions();
+
+    // login to the admin panel with valid credentials
+    const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    const adminPageInstance = await context.newPage();
+  
+    const loginPage = new LoginPage(adminPageInstance, BASE_URL!);
+    const adminPage = new AdminPage(adminPageInstance, BASE_URL!);
+
+    // 1. Login to admin panel and check user
+    await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+
+    // 2. Go to the Download limits page
+    await adminPage.gotoDownloadLimits(); 
+    await adminPage.expectDownloadLimitsPage();
+    
+    // 3. Search for a user
+    const { USER_EMAIL, USER_PASSWORD } = process.env;
+    //await adminPage.searchUserDownloadLimit(USER_EMAIL!); //c94e1e2e-ac12-4977-abf4-212d82ccc6ff
+    await adminPage.clickFirstRowLinkDownloadLimit();
+    
+    //Add limits to a user    
+    await adminPage.expectChangeDownloadLimitHeading();
+    await adminPage.setFreeDownloadRecords("5000");
+    await adminPage.expectSuccessMessageForDownloadLimit();
+
     // Log in to the main page
-    const { BASE_URL } = process.env;
     await page.goto(
       `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`!
     );
@@ -1742,7 +1776,6 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
 
     // Log in to the main page
     await page.getByRole("button", { name: "LOG IN" }).click();
-    const { USER_EMAIL, USER_PASSWORD } = process.env;
     await page.getByLabel("Email").fill(USER_EMAIL!);
     await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
     await page.getByRole("button", { name: "Log In" }).click();
