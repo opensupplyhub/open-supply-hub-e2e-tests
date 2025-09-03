@@ -3,20 +3,27 @@ import { BasePage } from "./BasePage";
 
 export class AdminPage extends BasePage {
   // Locators
+  // Contributors
   private contributorTable = () => this.page.locator("table#result_list tbody tr");
   private firstRowLink = () => this.contributorTable().first().locator("th.field-__str__ a");
-  private firstRowLinkDownloadLimit = () => this.page.locator("table#result_list tbody tr:first-child th a");
-  private freeDownloadRecordsInput = () => this.page.locator("#id_free_download_records");
-  private searchInput = () => this.page.getByRole("textbox", { name: "Search" });
-  private searchButton = () => this.page.getByRole("button", { name: "Search" });
   private changeContributorHeading = () => this.page.getByText("Change contributor");
-  private changeDownloadLimitHeading = () => this.page.getByText("Change facility download limit");
-  private adminInput = () => this.page.locator("#id_admin");
   private embedConfigInput = () => this.page.locator("#id_embed_config");
   private embedLevelInput = () => this.page.locator("#id_embed_level");
-  private saveButton = () => this.page.locator("input[type='submit'][value='Save']");
   private successMessageForContributor = () => this.page.getByText("The contributor").and(this.page.getByText("was changed successfully."));
+
+  // Download limits
+  private firstRowLinkDownloadLimit = () => this.page.locator("table#result_list tbody tr:first-child th a");
+  private freeDownloadRecordsInput = () => this.page.locator("#id_free_download_records");
+  private changeDownloadLimitHeading = () => this.page.getByText("Change facility download limit");
   private successMessageForDownloadLimit = () => this.page.getByText("The facility download limit").and(this.page.getByText("was changed successfully."));
+
+  // Common
+  private searchInput = () => this.page.getByRole("textbox", { name: "Search" });
+  private searchButton = () => this.page.getByRole("button", { name: "Search" });
+  private adminInput = () => this.page.locator("#id_admin");
+  private saveButton = () => this.page.locator("input[type='submit'][value='Save']");
+  
+  
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -41,9 +48,7 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.changeContributorHeading());
   }
 
-  async expectChangeDownloadLimitHeading() {
-    await this.expectToBeVisible(this.changeDownloadLimitHeading());
-  }
+ 
 
   async expectAdminEmail(email: string) {
     const selectedOption = this.adminInput().locator("option:checked");
@@ -80,9 +85,6 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.successMessageForContributor());
   }
 
-  async expectSuccessMessageForDownloadLimit() {
-    await this.expectToBeVisible(this.successMessageForDownloadLimit());
-  }
 
   async expectEmbedConfigCreated() {
     const configInput = this.embedConfigInput();  
@@ -100,6 +102,7 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.page.getByText("Select contributor to change"));
   }
 
+  // Download limits
   async gotoDownloadLimits() {
     await this.goto("/admin/api/facilitydownloadlimit/");
   }
@@ -119,10 +122,18 @@ export class AdminPage extends BasePage {
     await this.firstRowLinkDownloadLimit().click();
     await this.waitForLoadState();
   }
+  
+  async expectChangeDownloadLimitHeading() {
+    await this.expectToBeVisible(this.changeDownloadLimitHeading());
+  }
 
   async setFreeDownloadRecords(value: string) {
     await this.freeDownloadRecordsInput().fill(value);
     await this.saveButton().click();
     await this.waitForLoadState();
+  }
+
+  async expectSuccessMessageForDownloadLimit() {
+    await this.expectToBeVisible(this.successMessageForDownloadLimit());
   }
 } 
