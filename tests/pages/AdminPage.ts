@@ -22,15 +22,13 @@ export class AdminPage extends BasePage {
   private searchButton = () => this.page.getByRole("button", { name: "Search" });
   private adminInput = () => this.page.locator("#id_admin");
   private saveButton = () => this.page.locator("input[type='submit'][value='Save']");
-  
-  
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
   }
 
-  async gotoContributors() {
-    await this.goto("/admin/api/contributor/");
+  async goToContributors() {
+    await this.goTo("/admin/api/contributor/");
   }
 
   async searchContributor(email: string) {
@@ -48,8 +46,6 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.changeContributorHeading());
   }
 
- 
-
   async expectAdminEmail(email: string) {
     const selectedOption = this.adminInput().locator("option:checked");
     await this.expectToHaveText(selectedOption, email);
@@ -59,7 +55,6 @@ export class AdminPage extends BasePage {
     await this.embedConfigInput().selectOption("");
     await this.embedLevelInput().selectOption("");
     
-    // Verify clearing
     await this.expectToHaveText(this.embedConfigInput().locator("option:checked"), "---------");
     await this.expectToHaveText(this.embedLevelInput().locator("option:checked"), "---------");
   }
@@ -85,7 +80,6 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.successMessageForContributor());
   }
 
-
   async expectEmbedConfigCreated() {
     const configInput = this.embedConfigInput();  
     const selectedValue = await configInput.locator("option:checked").textContent();
@@ -102,9 +96,8 @@ export class AdminPage extends BasePage {
     await this.expectToBeVisible(this.page.getByText("Select contributor to change"));
   }
 
-  // Download limits
-  async gotoDownloadLimits() {
-    await this.goto("/admin/api/facilitydownloadlimit/");
+  async goToDownloadLimits() {
+    await this.goTo("/admin/api/facilitydownloadlimit/");
   }
 
   async expectDownloadLimitsPage() {
@@ -112,7 +105,6 @@ export class AdminPage extends BasePage {
   }
 
   async searchUserDownloadLimit(email: string) {
-
     await this.searchInput().fill(email);
     await this.searchButton().click();
     await this.waitForLoadState();
@@ -122,7 +114,7 @@ export class AdminPage extends BasePage {
     await this.firstRowLinkDownloadLimit().click();
     await this.waitForLoadState();
   }
-  
+
   async expectChangeDownloadLimitHeading() {
     await this.expectToBeVisible(this.changeDownloadLimitHeading());
   }

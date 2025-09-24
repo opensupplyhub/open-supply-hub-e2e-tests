@@ -9,7 +9,7 @@ export class BasePage {
     this.baseUrl = baseUrl;
   }
 
-  async goto(path: string = "") {
+  async goTo(path: string = "") {
     await this.page.goto(`${this.baseUrl}${path}`);
   }
 

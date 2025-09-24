@@ -20,13 +20,13 @@ export class LoginPage extends BasePage {
 
   // Main page authentication methods
   async loginToMainPage(email: string, password: string) {
-    await this.goto();
+    await this.goTo();
     
     // Accept cookies if present
     try {
       await this.acceptButton().click();
     } catch (error) {
-      // Accept button might not be present, continue
+      console.log(`An error has happened during accepting cookies: ${error}`);
     }
 
     // Navigate to login
@@ -62,7 +62,7 @@ export class LoginPage extends BasePage {
 
   // Admin panel authentication methods
   async loginToAdminPanel(email: string, password: string) {
-    await this.goto("/admin/");
+    await this.goTo("/admin/");
     
     // Verify we're on admin login page
     const title = await this.page.title();
@@ -83,7 +83,6 @@ export class LoginPage extends BasePage {
   async logoutFromAdminPanel() {
     await this.page.getByRole("link", { name: "Log out" }).click();
     
-    // Verify logout
     await expect(this.page.getByText("Log in again")).toBeVisible();
   }
 

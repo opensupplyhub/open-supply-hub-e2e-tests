@@ -22,13 +22,12 @@ export class MainPage extends BasePage {
   private facilityTypeDropdown = () => this.page.locator("#FACILITY_TYPE div").filter({ hasText: "Select" }).first();
   private workersDropdown = () => this.page.locator("#NUMBER_OF_WORKERS div").filter({ hasText: "Select" }).first();
 
-
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
   }
 
-  async goto() {
-    await super.goto();
+  async goTo() {
+    await super.goTo();
   }
 
   async verifyPageTitle() {

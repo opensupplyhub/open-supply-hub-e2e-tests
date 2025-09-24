@@ -20,7 +20,7 @@ test("[@smoke] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", asy
   const mainPage = new MainPage(page, BASE_URL!);
 
   // Navigate to main page and verify title
-  await mainPage.goto();
+  await mainPage.goTo();
   await mainPage.verifyPageTitle();
 
   // Login to main page
@@ -40,13 +40,8 @@ test("[@smoke] OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credenti
   
   const loginPage = new LoginPage(page, BASE_URL!);
 
-  // Login to admin panel
   await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-
-  // Verify successful admin login
   await loginPage.verifyAdminPanelLogin(USER_ADMIN_EMAIL!);
-
-  // Logout and verify logout
   await loginPage.logoutFromAdminPanel();
 });
 
@@ -473,7 +468,7 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   // 1. Login to admin panel and check user
   await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
-  await adminPage.gotoContributors();
+  await adminPage.goToContributors();
   await adminPage.expectSelectContributorPage();
   
   await adminPage.searchContributor(USER_ADMIN_EMAIL!);
@@ -630,7 +625,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
 
   if (`${BASE_URL}`.includes("test")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+      "17th Caiyun Road, Yinan industrial zone";
   } else if (`${BASE_URL}`.includes("staging")) {
     locationAddressCheck =
       "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
@@ -888,7 +883,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await mainPage.goto();
+    await mainPage.goTo();
 
     // Define an invalid search query
     const invalidSearchQuery = "invalid ABRACADABRA";
@@ -914,7 +909,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await mainPage.goto();
+    await mainPage.goTo();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re";
@@ -951,7 +946,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     const mainPage = new MainPage(page, BASE_URL!);
 
     // Navigate to the base URL
-    await mainPage.goto();
+    await mainPage.goTo();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re"; //
@@ -1722,10 +1717,7 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
     expect(title).toBe("Open Supply Hub");
     await page.waitForLoadState("networkidle");
 
-    // Attempt to download facilities
     await mainPage.downloadFacilitiesExcel();
-
-    // Check that the login pop-up is visible
     await mainPage.expectDownloadLoginPrompt();
   });
 
@@ -1735,35 +1727,28 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
     const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
     const context = await browser.newContext();
 
-    // Reset cookies and storage
     await context.clearCookies();
     await context.clearPermissions();
 
-    // login to the admin panel with valid credentials
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     const adminPageInstance = await context.newPage();
   
     const loginPage = new LoginPage(adminPageInstance, BASE_URL!);
     const adminPage = new AdminPage(adminPageInstance, BASE_URL!);
 
-    // 1. Login to admin panel and check user
     await loginPage.loginToAdminPanel(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
-    // 2. Go to the Download limits page
-    await adminPage.gotoDownloadLimits(); 
+    await adminPage.goToDownloadLimits(); 
     await adminPage.expectDownloadLimitsPage();
     
-    // 3. Search for a user
     const { USER_EMAIL, USER_PASSWORD } = process.env;
-    //await adminPage.searchUserDownloadLimit(USER_EMAIL!); //c94e1e2e-ac12-4977-abf4-212d82ccc6ff
+    await adminPage.searchUserDownloadLimit(USER_EMAIL!); //c94e1e2e-ac12-4977-abf4-212d82ccc6ff
     await adminPage.clickFirstRowLinkDownloadLimit();
-    
-    //Add limits to a user    
+     
     await adminPage.expectChangeDownloadLimitHeading();
     await adminPage.setFreeDownloadRecords("5000");
     await adminPage.expectSuccessMessageForDownloadLimit();
 
-    // Log in to the main page
     await page.goto(
       `${BASE_URL}/facilities/?countries=AL&countries=BA&countries=GR&countries=HR&countries=ME&sort_by=contributors_desc`!
     );
