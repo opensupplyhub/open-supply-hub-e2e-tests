@@ -38,3 +38,8 @@ USER_API_PASSWORD={api_password}
   ```bash
   npm run test
   ```
+
+- Run only "smoke" tests:
+  npx playwright test --grep "@smoke"
+
+- Run without any tags to run all tests during regression testing.
