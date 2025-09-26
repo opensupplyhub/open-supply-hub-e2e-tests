@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  e2e-tests:
+    build: .
+    container_name: open-supply-hub-e2e-tests
+    environment:
+      BASE_URL: https://test.os-hub.net
+      USER_EMAIL: oshub-test+user@speedandfunction.com
+      USER_PASSWORD: Hrzd3hn3xkSJwa
+      AUTH_TOKEN: 9bb4da25441eaf3fd34a5ce002447a6daac63d16
+      USER_ADMIN_EMAIL: oshub-test+admin@speedandfunction.com
+      USER_ADMIN_PASSWORD: Hrzd3hn3xkSJwa
+      USER_API_EMAIL: anna.bondar@speedandfunction.com
+      USER_API_PASSWORD: q1xvg67QAZ
+      ENVIRONMENT: test
+      VERSION_TAG: v2.12.0
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+  
+  report-server:
+    image: nginx:alpine
+    container_name: playwright-report-server
+    ports:
+      - "9323:80"
+    volumes:
+      - ./playwright-report:/usr/share/nginx/html:ro
+    depends_on:
+      - e2e-tests
