@@ -13,5 +13,3 @@ RUN npx playwright install --with-deps
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 EXPOSE 9323
-
-CMD ["npm", "run", "test"]

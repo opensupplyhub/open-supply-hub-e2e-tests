@@ -72,8 +72,11 @@ This project includes Docker configuration for easy setup and consistent testing
    # Build the Docker image
    docker-compose build
 
-   # Run all tests
+   # Run container for tests
    docker-compose up
+
+   # Run all tests
+   npm run test (inside docker container)
    ```
 
 4. **Access test reports:**
