@@ -4,17 +4,6 @@ services:
   e2e-tests:
     build: .
     container_name: open-supply-hub-e2e-tests
-    environment:
-      BASE_URL: https://test.os-hub.net
-      USER_EMAIL: {email}
-      USER_PASSWORD: {password}
-      AUTH_TOKEN: {token}
-      USER_ADMIN_EMAIL: {admin_email}
-      USER_ADMIN_PASSWORD: {admin_password}
-      USER_API_EMAIL: {api_email}
-      USER_API_PASSWORD: {api_password}
-      ENVIRONMENT: {environment}
-      VERSION_TAG: {version_tag}
     volumes:
       - ./test-results:/app/test-results
       - ./playwright-report:/app/playwright-report
