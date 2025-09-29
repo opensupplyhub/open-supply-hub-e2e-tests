@@ -49,3 +49,33 @@ VERSION_TAG={version_tag}
 - Run without any tags to run all tests during regression testing.
 
 ### Option 2: Docker Setup (Recommended)
+
+This project includes Docker configuration for easy setup and consistent testing environments.
+
+#### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed on your machine
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+#### Quick Start with Docker
+
+1. **Clone the repository and navigate to the project directory**
+
+2. **Create environment file** (copy from the example):
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env` with your actual test credentials.
+
+3. **Build and run tests:**
+   ```bash
+   # Build the Docker image
+   docker-compose build
+
+   # Run all tests
+   docker-compose up
+   ```
+
+4. **Access test reports:**
+   - After tests complete, open your browser and go to: `http://localhost:9323`
+   - Or open the HTML report directly: `open playwright-report/index.html`
