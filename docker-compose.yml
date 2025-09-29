@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  e2e-tests:
+    build: .
+    container_name: open-supply-hub-e2e-tests
+    command: tail -f /dev/null
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+  
+  report-server:
+    image: nginx:alpine
+    container_name: playwright-report-server
+    ports:
+      - "9323:80"
+    volumes:
+      - ./playwright-report:/usr/share/nginx/html:ro
+    depends_on:
+      - e2e-tests
