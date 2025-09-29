@@ -6,15 +6,15 @@ services:
     container_name: open-supply-hub-e2e-tests
     environment:
       BASE_URL: https://test.os-hub.net
-      USER_EMAIL: oshub-test+user@speedandfunction.com
-      USER_PASSWORD: Hrzd3hn3xkSJwa
-      AUTH_TOKEN: 9bb4da25441eaf3fd34a5ce002447a6daac63d16
-      USER_ADMIN_EMAIL: oshub-test+admin@speedandfunction.com
-      USER_ADMIN_PASSWORD: Hrzd3hn3xkSJwa
-      USER_API_EMAIL: anna.bondar@speedandfunction.com
-      USER_API_PASSWORD: q1xvg67QAZ
-      ENVIRONMENT: test
-      VERSION_TAG: v2.12.0
+      USER_EMAIL: {email}
+      USER_PASSWORD: {password}
+      AUTH_TOKEN: {token}
+      USER_ADMIN_EMAIL: {admin_email}
+      USER_ADMIN_PASSWORD: {admin_password}
+      USER_API_EMAIL: {api_email}
+      USER_API_PASSWORD: {api_password}
+      ENVIRONMENT: {environment}
+      VERSION_TAG: {version_tag}
     volumes:
       - ./test-results:/app/test-results
       - ./playwright-report:/app/playwright-report
