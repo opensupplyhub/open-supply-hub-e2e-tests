@@ -4,6 +4,7 @@ services:
   e2e-tests:
     build: .
     container_name: open-supply-hub-e2e-tests
+    command: tail -f /dev/null
     volumes:
       - ./test-results:/app/test-results
       - ./playwright-report:/app/playwright-report

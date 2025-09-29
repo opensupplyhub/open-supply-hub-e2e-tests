@@ -76,7 +76,10 @@ This project includes Docker configuration for easy setup and consistent testing
    docker-compose up
 
    # Run all tests
-   npm run test (inside docker container)
+   docker-compose exec e2e-tests npm run test
+
+   # Run smoke tests
+   docker-compose exec e2e-tests npx playwright test --grep "@smoke"
    ```
 
 4. **Access test reports:**
