@@ -24,7 +24,7 @@ test.beforeAll(setup);
 
 test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
   test.describe("Get list of facilities from `/facilities/` endpoint", () => {
-    test("GET `/facilities/`", async ({ request }) => {
+    test("[@smoke] GET `/facilities/`", async ({ request }) => {
       const response = await get(request, "/api/facilities/", {
         authenticate: true,
       });
@@ -34,7 +34,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
       validate(facilitiesSchema, body);
     });
 
-    test("Get list of facilities from `/facilities/?details=true` endpoint`", async ({
+    test("[@smoke] Get list of facilities from `/facilities/?details=true` endpoint`", async ({
       request,
     }) => {
       const response = await get(request, "/api/facilities/?detail=true", {
@@ -46,7 +46,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
       validate(facilitiesSchemaDetailsTrue, body);
     });
 
-    test("GET `/facilities/` unauthorized", async ({ request }) => {
+    test("[@smoke] GET `/facilities/` unauthorized", async ({ request }) => {
       const response = await get(request, "/api/facilities/", {
         authenticate: false,
       });
@@ -58,7 +58,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
   });
 
   test.describe("Get list of facilities from `/facilities/downloads` endpoint", () => {
-    test("GET `/facilities-downloads/` unauthorized", async ({ request }) => {
+    test("[@smoke] GET `/facilities-downloads/` unauthorized", async ({ request }) => {
       const response = await get(request, "/api/facilities-downloads/", {
         authenticate: false,
       });
@@ -68,7 +68,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
       validate(unauthorizedSchema, body);
     });
 
-    test("GET `/facilities-downloads/` authenticated", async ({ request }) => {
+    test("[@smoke] GET `/facilities-downloads/` authenticated", async ({ request }) => {
       const response = await get(request, "/api/facilities-downloads/", {
         authenticate: true,
       });
@@ -81,7 +81,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
 });
 
 // new part of the tests. coves get requests for https://opensupplyhub.org/api/docs/#!/facilities
-test("GET `/claim-statuses/`", async ({ request }) => {
+test("[@smoke] GET `/claim-statuses/`", async ({ request }) => {
   const response = await get(request, "/api/claim-statuses/", {
     authenticate: true,
   });
@@ -92,7 +92,7 @@ test("GET `/claim-statuses/`", async ({ request }) => {
   expect(body).toEqual(expect.arrayContaining(claimStatuses));
 });
 
-test("401 GET `/claim-statuses/`", async ({ request }) => {
+test("[@smoke] 401 GET `/claim-statuses/`", async ({ request }) => {
   const response = await get(request, "/api/claim-statuses/", {
     authenticate: false,
   });
@@ -103,7 +103,7 @@ test("401 GET `/claim-statuses/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/contributor-types/`", async ({ request }) => {
+test("[@smoke] GET `/contributor-types/`", async ({ request }) => {
   const response = await get(request, "/api/contributor-types/", {
     authenticate: true,
   });
@@ -114,7 +114,7 @@ test("GET `/contributor-types/`", async ({ request }) => {
   expect(body).toEqual(expect.arrayContaining(contributorTypes));
 });
 
-test("401 GET `/contributor-types/`", async ({ request }) => {
+test("[@smoke] 401 GET `/contributor-types/`", async ({ request }) => {
   const response = await get(request, "/api/contributor-types/", {
     authenticate: false,
   });
@@ -125,7 +125,7 @@ test("401 GET `/contributor-types/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/countries/`", async ({ request }) => {
+test("[@smoke] GET `/countries/`", async ({ request }) => {
   const response = await get(request, "/api/countries/", {
     authenticate: true,
   });
@@ -141,7 +141,7 @@ test("GET `/countries/`", async ({ request }) => {
   }
 });
 
-test("401 GET `/countries/`", async ({ request }) => {
+test("[@smoke] 401 GET `/countries/`", async ({ request }) => {
   const response = await get(request, "/api/countries/", {
     authenticate: false,
   });
@@ -152,7 +152,7 @@ test("401 GET `/countries/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/facilities/count/`", async ({ request }) => {
+test("[@smoke] GET `/facilities/count/`", async ({ request }) => {
   const response = await get(request, "/api/facilities/count/", {
     authenticate: true,
   });
@@ -163,7 +163,7 @@ test("GET `/facilities/count/`", async ({ request }) => {
   validate(facilitiesCount, body);
 });
 
-test("401 GET `/facilities/count/`", async ({ request }) => {
+test("[@smoke] 401 GET `/facilities/count/`", async ({ request }) => {
   const response = await get(request, "/api/facilities/count/", {
     authenticate: false,
   });
@@ -174,7 +174,7 @@ test("401 GET `/facilities/count/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("401 GET `/facilities/BD20190853EMPB5/`", async ({ request }) => {
+test("[@smoke] 401 GET `/facilities/BD20190853EMPB5/`", async ({ request }) => {
   const response = await get(request, "/api/facilities/BD20190853EMPB5/", {
     authenticate: false,
   });
@@ -185,7 +185,7 @@ test("401 GET `/facilities/BD20190853EMPB5/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/facilities/{os_id}` using first result from `/facilities/`", async ({
+test("[@smoke] GET `/facilities/{os_id}` using first result from `/facilities/`", async ({
   request,
 }) => {
   // Step 1: Get list of facilities
@@ -213,7 +213,7 @@ test("GET `/facilities/{os_id}` using first result from `/facilities/`", async (
   validate(facilitiesById, detailBody); // schema validation for detailed view
 });
 
-test("GET `/facility-processing-types/`", async ({ request }) => {
+test("[@smoke] GET `/facility-processing-types/`", async ({ request }) => {
   const response = await get(request, "/api/facility-processing-types/", {
     authenticate: true,
   });
@@ -224,7 +224,7 @@ test("GET `/facility-processing-types/`", async ({ request }) => {
   validate(facilityProcessingTypes, body);
 });
 
-test("401 GET `/facility-processing-types/`", async ({ request }) => {
+test("[@smoke] 401 GET `/facility-processing-types/`", async ({ request }) => {
   const response = await get(request, "/api/facility-processing-types/", {
     authenticate: false,
   });
@@ -235,7 +235,7 @@ test("401 GET `/facility-processing-types/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/moderation-events/merge/`", async ({ request }) => {
+test("[@smoke] GET `/moderation-events/merge/`", async ({ request }) => {
   const response = await get(request, "/api/moderation-events/merge/", {
     authenticate: true,
   });
@@ -246,7 +246,7 @@ test("GET `/moderation-events/merge/`", async ({ request }) => {
   validate(moderationEventsMerge, body);
 });
 
-test("401 GET `/moderation-events/merge/`", async ({ request }) => {
+test("[@smoke] 401 GET `/moderation-events/merge/`", async ({ request }) => {
   const response = await get(request, "/api/moderation-events/merge/", {
     authenticate: false,
   });
@@ -257,7 +257,7 @@ test("401 GET `/moderation-events/merge/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/parent-companies/`", async ({ request }) => {
+test("[@smoke] GET `/parent-companies/`", async ({ request }) => {
   const response = await get(request, "/api/parent-companies/", {
     authenticate: true,
   });
@@ -268,7 +268,7 @@ test("GET `/parent-companies/`", async ({ request }) => {
   validate(parentCompanies, body);
 });
 
-test("401 GET `/parent-companies/`", async ({ request }) => {
+test("[@smoke] 401 GET `/parent-companies/`", async ({ request }) => {
   const response = await get(request, "/api/parent-companies/", {
     authenticate: false,
   });
@@ -279,7 +279,7 @@ test("401 GET `/parent-companies/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/product-types/`", async ({ request }) => {
+test("[@smoke] GET `/product-types/`", async ({ request }) => {
   const response = await get(request, "/api/product-types/", {
     authenticate: true,
   });
@@ -290,7 +290,7 @@ test("GET `/product-types/`", async ({ request }) => {
   validate(productTypes, body);
 });
 
-test("401 GET `/product-types/`", async ({ request }) => {
+test("[@smoke] 401 GET `/product-types/`", async ({ request }) => {
   const response = await get(request, "/api/product-types/", {
     authenticate: false,
   });
@@ -301,7 +301,7 @@ test("401 GET `/product-types/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/sectors/`", async ({ request }) => {
+test("[@smoke] GET `/sectors/`", async ({ request }) => {
   const response = await get(request, "/api/sectors/", {
     authenticate: true,
   });
@@ -312,7 +312,7 @@ test("GET `/sectors/`", async ({ request }) => {
   validate(sectors, body);
 });
 
-test("401 GET `/sectors/`", async ({ request }) => {
+test("[@smoke] 401 GET `/sectors/`", async ({ request }) => {
   const response = await get(request, "/api/sectors/", {
     authenticate: false,
   });
@@ -323,7 +323,7 @@ test("401 GET `/sectors/`", async ({ request }) => {
   validate(unauthorizedSchema, body);
 });
 
-test("GET `/workers-ranges/`", async ({ request }) => {
+test("[@smoke] GET `/workers-ranges/`", async ({ request }) => {
   const response = await get(request, "/api/workers-ranges/", {
     authenticate: true,
   });
@@ -334,7 +334,7 @@ test("GET `/workers-ranges/`", async ({ request }) => {
   validate(workersRanges, body);
 });
 
-test("401 GET `/workers-ranges/`", async ({ request }) => {
+test("[@smoke] 401 GET `/workers-ranges/`", async ({ request }) => {
   const response = await get(request, "/api/workers-ranges/", {
     authenticate: false,
   });
