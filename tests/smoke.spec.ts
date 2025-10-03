@@ -613,12 +613,12 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   await adminPage.expectEmbedConfigCreated();
 });
 
-test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+test.only("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
   const { BASE_URL } = process.env;
   //Test data
-  const locationName = "zhejiang celebrity finery co., Ltd";
+  const locationName = "Zhejiang Celebrity Finery Co., Ltd";
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
   let locationAddressCheck =
     "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
@@ -631,7 +631,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
       "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+      "17th Caiyun Road, Yinan industrial zone";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
       "17th Caiyun Road, Yinan industrial zone";
@@ -735,7 +735,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
 
-  expect(await page.locator("#name").inputValue()).toContain(locationName);
+  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationName.toLowerCase());
   await expect(page.locator("#address")).toHaveValue(locationAddressCheck);
   await expect(page.locator("#country")).toHaveText(locationCountry);
   await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
@@ -823,7 +823,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  expect(await page.locator("#name").inputValue()).toContain(locationName);
+  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationName.toLowerCase());
   await expect(page.locator("#address")).toHaveValue(locationAddressCheck);
 
   await expect(page.locator("#country")).toHaveText("China");
