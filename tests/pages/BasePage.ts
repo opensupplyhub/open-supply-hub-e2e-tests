@@ -46,4 +46,8 @@ export class BasePage {
   async expectToHaveValue(locator: Locator, value: string) {
     await expect(locator).toHaveValue(value);
   }
+
+  async getCurrentUrl(): Promise<string> {
+    return this.page.url();
+  }
 } 

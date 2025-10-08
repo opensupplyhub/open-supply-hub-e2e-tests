@@ -41,6 +41,16 @@ export class LoginPage extends BasePage {
     await this.expectToBeVisible(this.myAccountButton());
   }
 
+  async completeLoginForm(email: string, password: string) {
+    // Fill credentials
+    await this.emailInput().fill(email);
+    await this.passwordInput().fill(password);
+    await this.loginButton().click();
+    
+    await this.waitForLoadState();
+    await this.page.waitForTimeout(2000);
+  }
+
   async logoutFromMainPage() {
     await this.myAccountButton().click();
     await this.logoutButton().click();
