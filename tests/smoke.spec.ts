@@ -613,7 +613,7 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   await adminPage.expectEmbedConfigCreated();
 });
 
-test.only("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
   const { BASE_URL } = process.env;
