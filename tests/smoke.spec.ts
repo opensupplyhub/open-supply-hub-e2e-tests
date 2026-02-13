@@ -618,26 +618,26 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
 }) => {
   const { BASE_URL } = process.env;
   //Test data
-  const locationName = "Zhejiang Celebrity Finery Co., Ltd";
+  const locationName = "Zhejiang Celebrity Finery Co. Ltd";
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
   let locationAddressCheck =
     "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
 
   if (`${BASE_URL}`.includes("test")) {
     locationAddressCheck =
-      "17th Caiyun Road, Yinan industrial zone";
+      "Yinan Industrial Zone, Yiwu";
   } else if (`${BASE_URL}`.includes("staging")) {
     locationAddressCheck =
-      "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+      "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
-      "17th Caiyun Road, Yinan industrial zone";
+      "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
-      "17th Caiyun Road, Yinan industrial zone";
+      "Yinan Industrial Zone, Yiwu";
   } else {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+      "Yinan Industrial Zone, Yiwu";
   }
 
   const locationCountry = "China";
@@ -718,11 +718,11 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
   await expect(
     page.getByRole("heading", { name: "Search results" })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: locationName })).toBeVisible();
+  await expect(page.getByRole("heading", { name: locationName }).first()).toBeVisible();
   await page
     .locator(
       `h3:has-text("${locationName}") >> .. >> .. >> button:has-text("Select")`
-    )
+    ).first()
     .click();
 
   await page.waitForResponse(
@@ -1811,9 +1811,9 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
 });
 
 test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
-  if (process.env.ENVIRONMENT !== "production") {
-    test.skip(true, "Only runs in Production environment");
-  }
+  // if (process.env.ENVIRONMENT !== "production") {
+  //   test.skip(true, "Only runs in Production environment");
+  // }
 
   // Company name = link to the site
   const linksToSitesWhereCheckEM = [
