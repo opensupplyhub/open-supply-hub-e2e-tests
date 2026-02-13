@@ -1811,9 +1811,9 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
 });
 
 test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly at their websites.", () => {
-  // if (process.env.ENVIRONMENT !== "production") {
-  //   test.skip(true, "Only runs in Production environment");
-  // }
+  if (process.env.ENVIRONMENT !== "production") {
+    test.skip(true, "Only runs in Production environment");
+  }
 
   // Company name = link to the site
   const linksToSitesWhereCheckEM = [
