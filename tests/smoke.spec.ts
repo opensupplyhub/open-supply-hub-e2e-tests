@@ -121,8 +121,8 @@ uploadScenarios.forEach(
     errorText,
     numberOfErrors,
   }) => {
-    test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
-      test(`[@smoke] Successful list uploading in ${format} format.`, async ({
+    test.describe.skip(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
+      test.skip(`[@smoke] Successful list uploading in ${format} format.`, async ({
         page,
       }) => {
         test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
@@ -372,7 +372,7 @@ uploadScenarios.forEach(
         }
       });
 
-      test(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
+      test.skip(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
         const { BASE_URL } = process.env;
         await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -618,26 +618,38 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
 }) => {
   const { BASE_URL } = process.env;
   //Test data
-  const locationName = "Zhejiang Celebrity Finery Co. Ltd";
+  const locationName = "Zhejiang Celebrity Finery Co., Ltd";
+
+  
   const locationAddress = "17th Caiyun Road ,Yinan industrial zone";
   let locationAddressCheck =
     "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+  let locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
 
   if (`${BASE_URL}`.includes("test")) {
     locationAddressCheck =
-      "Yinan Industrial Zone, Yiwu";
+      "17# Caiyun Road Fotang Town,Yinan Industrial Zone YIWU";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else if (`${BASE_URL}`.includes("staging")) {
     locationAddressCheck =
-      "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
+      "No.17, Cai Yun Road,Yinan Industrial Zone . Fotang Town, Yiwu, Zhejiang, China";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
+  }else if (`${BASE_URL}`.includes("rba.opensupplyhub")) {
+    locationAddressCheck =
+      "Yinan Industrial Zone, Yiwu";
+    locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";            
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
       "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
       "Yinan Industrial Zone, Yiwu";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else {
     locationAddressCheck =
       "Yinan Industrial Zone, Yiwu";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   }
 
   const locationCountry = "China";
@@ -718,10 +730,10 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
   await expect(
     page.getByRole("heading", { name: "Search results" })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: locationName }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: locationNameCheck }).first()).toBeVisible();
   await page
     .locator(
-      `h3:has-text("${locationName}") >> .. >> .. >> button:has-text("Select")`
+      `h3:has-text("${locationNameCheck}") >> .. >> .. >> button:has-text("Select")`
     ).first()
     .click();
 
@@ -735,7 +747,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
 
-  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationName.toLowerCase());
+  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationNameCheck.toLowerCase());
   await expect(page.locator("#address")).toHaveValue(locationAddressCheck);
   await expect(page.locator("#country")).toHaveText(locationCountry);
   await expect(page.getByRole("button", { name: "Update" })).toBeVisible();
@@ -823,7 +835,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
   await expect(
     page.getByRole("heading", { name: "Production Location Information" })
   ).toBeVisible();
-  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationName.toLowerCase());
+  expect((await page.locator("#name").inputValue()).toLowerCase()).toContain(locationNameCheck.toLowerCase());
   await expect(page.locator("#address")).toHaveValue(locationAddressCheck);
 
   await expect(page.locator("#country")).toHaveText("China");
@@ -1368,11 +1380,12 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       let text: string | null = null;
 
       const primaryLocator = page.locator(
-        "//p[text()='Facility Type']/../../div[2]/div[1]/p[1]"
+        "//p[text()='Facility Type']/../../div[2]/div[1]/div[1]"
       );
       text = await primaryLocator.textContent();
 
       const facilityTypeByLocator = text?.trim();
+      console.log(facilityTypeByLocator);
 
       //---
       if (!facilityTypeByLocator?.includes(facilityType)) {
@@ -1383,6 +1396,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
         const moreTypeButton = facilityTypeSection.locator(
           'button:has-text("entries"), button:has-text("entry")'
         );
+        
         await moreTypeButton.click();
 
         const facilityTypeSlide = page

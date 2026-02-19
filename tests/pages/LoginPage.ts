@@ -53,6 +53,7 @@ export class LoginPage extends BasePage {
 
   async logoutFromMainPage() {
     await this.myAccountButton().click();
+    await this.expectToBeVisible(this.logoutButton());
     await this.logoutButton().click();
     
     // Wait for logout response
