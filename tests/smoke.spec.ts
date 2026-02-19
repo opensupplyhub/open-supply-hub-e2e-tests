@@ -121,8 +121,8 @@ uploadScenarios.forEach(
     errorText,
     numberOfErrors,
   }) => {
-    test.describe.skip(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
-      test.skip(`[@smoke] Successful list uploading in ${format} format.`, async ({
+    test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
+      test(`[@smoke] Successful list uploading in ${format} format.`, async ({
         page,
       }) => {
         test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
@@ -372,7 +372,7 @@ uploadScenarios.forEach(
         }
       });
 
-      test.skip(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
+      test(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
         const { BASE_URL } = process.env;
         await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
