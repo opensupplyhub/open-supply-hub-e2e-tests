@@ -640,7 +640,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
     locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";            
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
-      "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
+      "17th Caiyun Road, Yinan industrial zone";
     locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
