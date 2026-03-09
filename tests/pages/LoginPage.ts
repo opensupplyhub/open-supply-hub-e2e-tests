@@ -53,6 +53,7 @@ export class LoginPage extends BasePage {
 
   async logoutFromMainPage() {
     await this.myAccountButton().click();
+    await this.expectToBeVisible(this.logoutButton());
     await this.logoutButton().click();
     
     // Wait for logout response
@@ -87,11 +88,11 @@ export class LoginPage extends BasePage {
     // Verify successful admin login
     await this.expectToBeVisible(this.page.getByRole("link", { name: "Open Supply Hub Admin" }));
     await this.expectToBeVisible(this.page.getByText("Site administration"));
-    await this.expectToBeVisible(this.page.getByRole("link", { name: "Log out" }));
+    await this.expectToBeVisible(this.page.getByRole("button", { name: "Log out" }));
   }
 
   async logoutFromAdminPanel() {
-    await this.page.getByRole("link", { name: "Log out" }).click();
+    await this.page.getByRole("button", { name: "Log out" }).click();
     
     await expect(this.page.getByText("Log in again")).toBeVisible();
   }
