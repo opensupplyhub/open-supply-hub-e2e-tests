@@ -11,7 +11,7 @@ import ExcelJS, { Row, CellValue } from "exceljs";
 
 test.beforeAll(setup);
 
-test("[@smoke] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
+test("[@smokev1][@smokev2] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
   page,
   }) => {
     const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
@@ -33,7 +33,7 @@ test("[@smoke] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", asy
   await loginPage.logoutFromMainPage();
 });
 
-test("[@smoke] OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", async ({
+test("[@smokev1][@smokev2] OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credentials", async ({
   page,
   }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
@@ -46,7 +46,7 @@ test("[@smoke] OSDEV-1235: Smoke: Django Admin Panel. Log-in with valid credenti
 });
 
 test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an endpoint", () => {
-  test("[@smoke] Get list of facilities from `/facilities` endpoint", async ({
+  test("[@smokev1][@smokev2] Get list of facilities from `/facilities` endpoint", async ({
     request,
   }) => {
     const response = await get(request, "/api/facilities/", {
@@ -77,7 +77,7 @@ test.describe("OSDEV-1233: Smoke: API. Search for valid facilities through an en
     expect(firstFeature.properties).toHaveProperty("country_name");
   });
 
-  test("[@smoke] Get unauthorized response from `/facilities` endpoint", async ({
+  test("[@smokev1][@smokev2] Get unauthorized response from `/facilities` endpoint", async ({
     request,
   }) => {
     const response = await get(request, "/api/facilities/", {
@@ -122,7 +122,7 @@ uploadScenarios.forEach(
     numberOfErrors,
   }) => {
     test.describe(`${testCaseID}: Smoke: Facilities. Upload a list in ${format} format.`, () => {
-      test(`[@smoke] Successful list uploading in ${format} format.`, async ({
+      test(`[@smokev1][@smokev2] Successful list uploading in ${format} format.`, async ({
         page,
       }) => {
         test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
@@ -372,7 +372,7 @@ uploadScenarios.forEach(
         }
       });
 
-      test(`[@smoke] The ${format} list validation before upload.`, async ({ page }) => {
+      test(`[@smokev1][@smokev2] The ${format} list validation before upload.`, async ({ page }) => {
         const { BASE_URL } = process.env;
         await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
@@ -450,7 +450,7 @@ uploadScenarios.forEach(
   }
 );
 
-test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
+test("[@smokev1][@smokev2] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it.", async () => {
   const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
   const context = await browser.newContext();
 
@@ -613,7 +613,7 @@ test("[@smoke] OSDEV-1234: Smoke: Create Embedded Map with no facilities on it."
   await adminPage.expectEmbedConfigCreated();
 });
 
-test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
+test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able to search by Name and Address, or by OS ID", async ({
   page,
 }) => {
   const { BASE_URL } = process.env;
@@ -890,7 +890,7 @@ test("[@smoke] OSDEV-1813: Smoke: SLC page is opened, user is able to search by 
 });
 
 test.describe("OSDEV-1232: Home page search combinations", () => {
-  test("[@smoke] OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
+  test("[@smokev1] OSDEV-1232: Facilities. Invalid search", async ({ page }) => {
     const { BASE_URL } = process.env;
     const mainPage = new MainPage(page, BASE_URL!);
 
@@ -916,7 +916,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     await expect(page.getByText("No facilities matching this")).toBeVisible();
   });
 
-  test("[@smoke] OSDEV-1232: Facilities. Valid search", async ({ page }) => {
+  test("[@smokev1] OSDEV-1232: Facilities. Valid search", async ({ page }) => {
     const { BASE_URL } = process.env;
     const mainPage = new MainPage(page, BASE_URL!);
 
@@ -945,6 +945,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     const facilityLink = page.locator('a[href*="/facilities/"]').first();
     await facilityLink.scrollIntoViewIfNeeded();
     await facilityLink.waitFor({ state: "visible" });
+    await facilityLink.click();
 
     // wait for the page to load
     await page.waitForLoadState("networkidle");
@@ -953,7 +954,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     await expect(page.getByText(validSearchQuery).first()).toBeVisible();
   });
 
-  test("[@smoke] OSDEV-1232: Facilities. OSID search", async ({ page }) => {
+  test("[@smokev1] OSDEV-1232: Facilities. OSID search", async ({ page }) => {
     const { BASE_URL } = process.env;
     const mainPage = new MainPage(page, BASE_URL!);
 
@@ -1015,7 +1016,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   countryTestCases.forEach((countryName) => {
-    test(`[@smoke] OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({
+    test(`[@smokev1] OSDEV-1232: Facilities. Country Search - ${countryName}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1069,7 +1070,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   facilityTypeTestCases.forEach((facilityType) => {
-    test(`[@smoke] OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({
+    test(`[@smokev1] OSDEV-1232: Facilities. Facility Type Search - ${facilityType}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1166,7 +1167,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   workerRangeTestCases.forEach((testCase) => {
-    test(`[@smoke] OSDEV-1232: Facilities. Filter by Number of Workers - ${testCase.range}`, async ({
+    test(`[@smokev1] OSDEV-1232: Facilities. Filter by Number of Workers - ${testCase.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1297,7 +1298,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   ];
 
   combinedFilterTestCases.forEach(({ country, facilityType, workerRange }) => {
-    test(`[@smoke] OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`, async ({
+    test(`[@smokev1] OSDEV-1232: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`, async ({
       page,
     }) => {
       const { BASE_URL } = process.env;
@@ -1482,8 +1483,476 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
   });
 });
 
+test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
+  test("[@smokev2] OSDEV-1232 v2: Facilities. Invalid search", async ({
+    page,
+  }) => {
+    const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
+
+    // Navigate to the base URL
+    await mainPage.goTo();
+
+    // Define an invalid search query
+    const invalidSearchQuery = "invalid ABRACADABRA";
+
+    // Click on the search input field and fill it with the invalid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(invalidSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the facilities API call to return a 200 status
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the "No facilities matching this" message is visible
+    await expect(page.getByText("No facilities matching this")).toBeVisible();
+  });
+
+  test("[@smokev2] OSDEV-1232 v2: Facilities. Valid search", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
+
+    // Navigate to the base URL
+    await mainPage.goTo();
+
+    // Define a valid search query
+    const validSearchQuery = "Fab Lab Re";
+
+    // Click on the search input field and fill it with the valid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(validSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the facilities API call to return a 200 status
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
+
+    // Click the first facility link in the search results
+    //const facilityLink = page.locator('a[href*="/facilities/"]').first();
+    const facilityLink = page
+    .locator(
+      'a[href*="/facilities/"], a[href*="/production-locations/"]'
+    )
+    .first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: "visible" });
+    await facilityLink.click();
+
+    // wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByTestId("jump-to-section")).toBeVisible();
+    await expect(
+      page.getByTestId("production-location-details-general-fields")
+    ).toBeVisible();
+    await expect(
+      page.getByTestId("spotlight-section")
+    ).toBeVisible();
+  });
+
+  test("[@smokev2] OSDEV-1232 v2: Facilities. OSID search", async ({ page }) => {
+    const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
+
+    // Navigate to the base URL
+    await mainPage.goTo();
+
+    // Define a valid search query
+    const validSearchQuery = "Fab Lab Re"; //
+
+    // Click on the search input field and fill it with the valid query
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").click();
+    await page
+      .getByPlaceholder("e.g. ABC Textiles Limited")
+      .fill(validSearchQuery);
+
+    // Click the "Find Facilities" button to perform the search
+    await page.getByRole("button", { name: "Find Facilities" }).click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
+
+    // Click the first facility link in the search results
+    const facilityLink = page
+      .locator(
+        'a[href*="/facilities/"], a[href*="/production-locations/"]'
+      )
+      .first();
+    await facilityLink.scrollIntoViewIfNeeded();
+    await facilityLink.waitFor({ state: "visible" });
+    await facilityLink.click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByTestId("location-name")).toBeVisible();
+
+    const osID = await mainPage.getOSIDFromLocationPage();
+
+    // Navigate back to the search results
+    await page.getByRole("button", { name: "Back to search results" }).click();
+
+    // Perform a search using the copied OSID
+    await page.getByPlaceholder("e.g. ABC Textiles Limited").fill(osID);
+    await page.getByRole("button", { name: "Search" }).first().click();
+
+    // Wait for the page to load
+    await page.waitForLoadState("networkidle");
+
+    // Assert that the search results contain the OSID
+    await expect(page.getByText(osID)).toBeVisible();
+  });
+
+  // Test for country search
+  const countryTestCasesV2 = [
+    "United States",
+    "Australia",
+    "United Kingdom",
+    "South Africa",
+  ];
+
+  countryTestCasesV2.forEach((countryName) => {
+    test(
+      `[@smokev2] OSDEV-1232 v2: Facilities. Country Search - ${countryName}`,
+      async ({ page }) => {
+        const { BASE_URL } = process.env;
+        await page.goto(BASE_URL!);
+
+        // Open the country dropdown
+        const countryDropdown = page
+          .locator("#COUNTRIES div")
+          .filter({ hasText: "Select" })
+          .nth(1);
+        await countryDropdown.click();
+
+        // Type and select country
+        const countryInput = countryDropdown.locator("input");
+        await countryInput.fill(countryName);
+        const option = page
+          .locator("#COUNTRIES div")
+          .filter({ hasText: countryName })
+          .nth(1);
+        await option.click();
+        await page.keyboard.press("Enter");
+
+        // Click search
+        const searchButton = page.locator('button[type="submit"]', {
+          hasText: "Find Facilities",
+        });
+        await searchButton.waitFor({ state: "visible" });
+        await searchButton.click();
+
+        // Assert search result contains country name
+        await expect(
+          page.getByText(countryName, { exact: true })
+        ).toBeVisible();
+
+        // Click first facility link
+        const facilityLink = page
+          .locator(
+            'a[href*="/facilities/"], a[href*="/production-locations/"]'
+          )
+          .first();
+        await facilityLink.scrollIntoViewIfNeeded();
+        await facilityLink.waitFor({ state: "visible" });
+        await facilityLink.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Assert facility page contains country name
+        const mainPanel = page.locator("#mainPanel");
+        await mainPanel.scrollIntoViewIfNeeded();
+        await expect(
+          page.getByTestId("production-location-details-general-fields")
+        ).toBeVisible();
+      }
+    );
+  });
+
+  // Test for facility type search
+  const facilityTypeTestCasesV2 = [
+    "Final Product Assembly",
+    "Raw Material Processing or Production",
+  ];
+
+  facilityTypeTestCasesV2.forEach((facilityType) => {
+    test(
+      `[@smokev2] OSDEV-1232 v2: Facilities. Facility Type Search - ${facilityType}`,
+      async ({ page }) => {
+        const { BASE_URL } = process.env;
+        await page.goto(BASE_URL!);
+        await page.getByRole("button", { name: "Find Facilities" }).click();
+        await page.waitForLoadState("networkidle");
+
+        // Open the FACILITY TYPE dropdown
+        const typeDropdown = page
+          .locator("#FACILITY_TYPE div")
+          .filter({ hasText: "Select" })
+          .first();
+        await typeDropdown.click();
+
+        // Fill and select the facility type
+        const typeInput = typeDropdown.locator("input");
+        await typeInput.fill(facilityType);
+
+        const typeOption = page
+          .locator("#FACILITY_TYPE div")
+          .filter({ hasText: facilityType })
+          .first();
+        await typeOption.click();
+        await page.keyboard.press("Enter");
+
+        // Click the search button *after* selecting the filter
+        const searchButton = page.locator('button[type="submit"]', {
+          hasText: "Search",
+        });
+        await searchButton.waitFor({ state: "visible" });
+        await searchButton.click();
+        await page.waitForLoadState("networkidle");
+
+        // Assert the result page shows the selected facility type
+        await expect(
+          page.getByText(new RegExp(facilityType, "i")).first()
+        ).toBeVisible();
+
+        // Click the first facility link
+        const facilityLink = page
+          .locator(
+            'a[href*="/facilities/"], a[href*="/production-locations/"]'
+          )
+          .nth(1);
+        await facilityLink.scrollIntoViewIfNeeded();
+        await facilityLink.waitFor({ state: "visible" });
+        await facilityLink.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Scroll and wait for the panel
+        const mainPanel = page.locator("#mainPanel");
+        await mainPanel.scrollIntoViewIfNeeded();
+
+        await expect(
+          page.getByTestId("spotlight-section")
+        ).toBeVisible();
+      }
+    );
+  });
+
+  // Test for worker range / number of workers search
+  const workerRangeTestCasesV2 = [
+    {
+      range: "Less than 1000",
+      min: 0,
+      max: 1000,
+    },
+    {
+      range: "1001-5000",
+      min: 1001,
+      max: 5000,
+    },
+    {
+      range: "5001-10000",
+      min: 5001,
+      max: 10000,
+    },
+    {
+      range: "More than 10000",
+      min: 10001,
+      max: Infinity,
+    },
+  ];
+
+  workerRangeTestCasesV2.forEach((testCase) => {
+    test(
+      `[@smokev2] OSDEV-1232 v2: Facilities. Filter by Number of Workers - ${testCase.range}`,
+      async ({ page }) => {
+        const { BASE_URL } = process.env;
+        await page.goto(BASE_URL!);
+        await page.getByRole("button", { name: "Find Facilities" }).click();
+        await page.waitForLoadState("networkidle");
+
+        // Open the NUMBER OF WORKERS dropdown
+        const workersDropdown = page
+          .locator("#NUMBER_OF_WORKERS div")
+          .filter({ hasText: "Select" })
+          .first();
+        await workersDropdown.click();
+
+        // Fill and select the worker range
+        const workersInput = workersDropdown.locator("input");
+        await workersInput.fill(testCase.range);
+
+        const option = page
+          .locator("#NUMBER_OF_WORKERS div")
+          .filter({ hasText: testCase.range })
+          .first();
+        await option.click();
+        await page.keyboard.press("Enter");
+
+        // Click the search button
+        const searchButton = page.locator('button[type="submit"]', {
+          hasText: /search/i,
+        });
+        await searchButton.waitFor({ state: "visible" });
+        await searchButton.click();
+        await page.waitForLoadState("networkidle");
+
+        // Confirm that at least one result is shown
+        const facilityLink = page
+          .locator(
+            'a[href*="/facilities/"], a[href*="/production-locations/"]'
+          )
+          .first();
+        await facilityLink.scrollIntoViewIfNeeded();
+        await facilityLink.waitFor({ state: "visible" });
+        await facilityLink.click();
+        await page.waitForLoadState("networkidle");
+
+        // Wait for main content to load
+        const mainPanel = page.locator("#mainPanel");
+        await mainPanel.scrollIntoViewIfNeeded();
+
+        await expect(
+          page.getByTestId("gi-workers").getByTestId("data-point-value")
+        ).toBeVisible();
+      }
+    );
+  });
+
+  // Combined filter test cases
+  const combinedFilterTestCasesV2 = [
+    {
+      country: "United States",
+      facilityType: "Final Product Assembly",
+      workerRange: {
+        range: "Less than 1000",
+        min: 0,
+        max: 1000,
+      },
+    },
+    {
+      country: "United States",
+      facilityType: "Textile or Material Production",
+      workerRange: {
+        range: "Less than 1000",
+        min: 0,
+        max: 1000,
+      },
+    },
+  ];
+
+  combinedFilterTestCasesV2.forEach(
+    ({ country, facilityType, workerRange }) => {
+      test(
+        `[@smokev2] OSDEV-1232 v2: Combined filter - ${country}, ${facilityType}, ${workerRange.range}`,
+        async ({ page }) => {
+          const { BASE_URL } = process.env;
+
+          await page.goto(BASE_URL!);
+          await page.getByRole("button", { name: "Find Facilities" }).click();
+          await page.waitForLoadState("networkidle");
+
+          // COUNTRY filter
+          const countryDropdown = page
+            .locator("#COUNTRIES div")
+            .filter({ hasText: "Select" })
+            .nth(1);
+          await countryDropdown.click();
+
+          const countryInput = countryDropdown.locator("input");
+          await countryInput.fill(country);
+
+          const countryOption = page
+            .locator("#COUNTRIES div")
+            .filter({ hasText: country })
+            .nth(1);
+          await countryOption.click();
+          await page.keyboard.press("Enter");
+
+          // FACILITY TYPE filter
+          const typeDropdown = page
+            .locator("#FACILITY_TYPE div")
+            .filter({ hasText: "Select" })
+            .first();
+          await typeDropdown.click();
+
+          const typeInput = typeDropdown.locator("input");
+          await typeInput.fill(facilityType);
+
+          const typeOption = page
+            .locator("#FACILITY_TYPE div")
+            .filter({ hasText: facilityType })
+            .first();
+          await typeOption.click();
+          await page.keyboard.press("Enter");
+
+          // NUMBER OF WORKERS filter
+          const workersDropdown = page
+            .locator("#NUMBER_OF_WORKERS div")
+            .filter({ hasText: "Select" })
+            .first();
+          await workersDropdown.click();
+
+          const workersInput = workersDropdown.locator("input");
+          await workersInput.fill(workerRange.range);
+
+          const workersOption = page
+            .locator("#NUMBER_OF_WORKERS div")
+            .filter({ hasText: workerRange.range })
+            .first();
+          await workersOption.click();
+          await page.keyboard.press("Enter");
+
+          // Click search
+          const searchButton = page.locator('button[type="submit"]', {
+            hasText: /search/i,
+          });
+          await searchButton.waitFor({ state: "visible" });
+          await searchButton.click();
+          await page.waitForLoadState("networkidle");
+
+          // Click the first facility link
+          const facilityLink = page
+            .locator(
+              'a[href*="/facilities/"], a[href*="/production-locations/"]'
+            )
+            .first();
+          await facilityLink.scrollIntoViewIfNeeded();
+          await facilityLink.waitFor({ state: "visible" });
+          await facilityLink.click();
+          await page.waitForLoadState("networkidle");
+
+          // Scroll and wait for the panel
+          const mainPanel = page.locator("#mainPanel");
+          await mainPanel.scrollIntoViewIfNeeded();
+
+          await expect(
+            page.getByTestId("production-location-details-general-fields")
+          ).toBeVisible();
+          await expect(
+            page.getByTestId("spotlight-section")
+          ).toBeVisible();
+        }
+      );
+    }
+  );
+});
+
 test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through the Dashboard by a Moderation manager.", () => {
-  test("[@smoke] A moderator is able to work with the Moderation Queue page.", async ({
+  test("[@smokev1][@smokev2] A moderator is able to work with the Moderation Queue page.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -1674,7 +2143,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
     ).toBeVisible();
   });
 
-  test("[@smoke] A regular user does not have an access to the Moderation Queue page.", async ({
+  test("[@smokev1][@smokev2] A regular user does not have an access to the Moderation Queue page.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -1716,7 +2185,7 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
 });
 
 test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up to 5000 in xlsx.", async () => {
-  test("[@smoke] An unauthorized user cannot download a list of facilities.", async ({
+  test("[@smokev1][@smokev2] An unauthorized user cannot download a list of facilities.", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;
@@ -1735,7 +2204,7 @@ test.describe("OSDEV-1264: Smoke: Download a list of facilities with amounts up 
     await mainPage.expectDownloadLoginPrompt();
   });
 
-  test("[@smoke] An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
+  test("[@smokev1][@smokev2] An authorized user can download a list of facilities with amounts 5000 in xlsx.", async ({
     page,
   }) => {
     const browser = await chromium.launch({ headless: true }); // set headless: false to run with UI
@@ -1851,7 +2320,7 @@ test.describe("OSDEV-1275: Smoke: EM user can see embedded map working properly 
   ];
 
   for (const { name, url } of linksToSitesWhereCheckEM) {
-    test(`[@smoke] Check embedded maps on ${name} website.`, async ({ page }) => {
+    test(`[@smokev1][@smokev2] Check embedded maps on ${name} website.`, async ({ page }) => {
       await page.goto(url, { waitUntil: "networkidle" });
       await page.waitForLoadState("load"); // fires when all resources are loaded
       await page.waitForLoadState("domcontentloaded"); // when HTML is parsed
