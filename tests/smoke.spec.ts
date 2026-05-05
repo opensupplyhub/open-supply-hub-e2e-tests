@@ -372,7 +372,7 @@ uploadScenarios.forEach(
         }
       });
 
-      test(`[@smokev1] The ${format} list validation before upload.`, async ({ page }) => {
+      test(`[@smokev1][@smokev2] The ${format} list validation before upload.`, async ({ page }) => {
         const { BASE_URL } = process.env;
         await page.goto(`${BASE_URL}/contribute/multiple-locations`);
 
