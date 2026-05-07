@@ -43,10 +43,25 @@ VERSION_TAG={version_tag}
   npm run test
   ```
 
-- Run only "smoke" tests:
-  npx playwright test --grep "@smoke"
+- **Tags** (embedded in test titles; filter with Playwright’s `--grep`):
+  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old and new location page UI
+  - **`@regression`** — regression scenarios that can be executed during regression testing in a pre-production environment to reduce testing time and increase test coverage
+  
+  Examples:
 
-- Run without any tags to run all tests during regression testing.
+  ```bash
+  # Smoke v1
+  npx playwright test --grep "@smokev1"
+
+  # Smoke v2
+  npx playwright test --grep "@smokev2"
+
+  # Regression only
+  npx playwright test --grep "@regression"
+
+  # Full suite (smoke + regression + everything else)
+  npm run test
+  ```
 
 ### Option 2: Docker Setup (Recommended)
 
@@ -78,8 +93,10 @@ This project includes Docker configuration for easy setup and consistent testing
    # Run all tests
    docker-compose exec e2e-tests npm run test
 
-   # Run smoke tests
-   docker-compose exec e2e-tests npx playwright test --grep "@smoke"
+   # Run smoke by tag (same as locally)
+   docker-compose exec e2e-tests npx playwright test --grep "@smokev1"
+   docker-compose exec e2e-tests npx playwright test --grep "@smokev2"
+   docker-compose exec e2e-tests npx playwright test --grep "@regression"
    ```
 
 4. **Access test reports:**

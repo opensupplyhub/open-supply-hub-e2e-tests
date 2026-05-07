@@ -9,74 +9,68 @@ tests/pages/
 ├── BasePage.ts          # Base class with common functionality
 ├── LoginPage.ts         # Authentication for main page and admin panel
 ├── MainPage.ts          # Main page functionality (search, navigation, downloads)
-├── AdminPage.ts         # Admin panel functionality
+├── AdminPage.ts         # Django admin contributor/download-limit operations
+├── AdminDashboardPage.ts  # Dashboard moderation queue access and assertions
 └── README.md           # This documentation
 ```
 
 ## Page Objects
 
 ### BasePage
-The foundation class that provides common functionality for all page objects:
-- Navigation methods (`goto`, `waitForLoadState`)
-- Common interactions (`clickButton`, `clickLink`, `fillInput`)
-- Assertion helpers (`expectToBeVisible`, `expectToHaveText`, `expectToHaveValue`)
+Base class extended by all page objects.
+
+- Navigation: (`goTo`, `getCurrentUrl()`)
+- Wait helpers: (`waitForLoadState`, `waitForResponse`)
+- Common interactions: (`clickButton`, `clickLink`, `fillInput`)
+- Assertion helpers: (`expectToBeVisible`, `expectToHaveText`, `expectToHaveValue`)
 
 ### LoginPage
-Handles authentication for both the main application and admin panel:
-- `loginToMainPage(email, password)` - Login to main application
-- `logoutFromMainPage()` - Logout from main application
-- `loginToAdminPanel(email, password)` - Login to Django admin
-- `logoutFromAdminPanel()` - Logout from admin panel
-- `verifyMainPageLogin(email)` - Verify successful main page login
-- `verifyAdminPanelLogin(email)` - Verify successful admin login
+Authentication flows for both the main app and Django admin.
+
+- Main app: `loginToMainPage`, `completeLoginForm`, `logoutFromMainPage`, `verifyMainPageLogin`, `isLoggedIn`
+- Admin app: `loginToAdminPanel`, `logoutFromAdminPanel`, `verifyAdminPanelLogin`, `isAdminLoggedIn`
+- Utility: `getPageTitle`
 
 ### MainPage
-Manages main page functionality including search and navigation:
-- `goto()` - Navigate to main page and verify title
-- `searchFacilities(query)` - Search for facilities by name
-- `searchByOSID(osId)` - Search by OS ID
-- `searchByCountry(country)` - Filter by country
-- `searchByFacilityType(type)` - Filter by facility type
-- `searchByWorkerRange(range)` - Filter by worker range
-- `clickFirstFacility()` - Click first facility in results
-- `downloadFacilitiesExcel()` - Download facilities as Excel
-- Various expectation methods for search results
+Public main-site search and results behavior.
+
+- Navigation/title: `goTo`, `verifyPageTitle`
+- Search and filters: `searchFacilities`, `searchByOSID`, `searchByCountry`, `searchByFacilityType`, `searchByWorkerRange`, `performSearch`
+- Results actions: `clickFirstFacility`, `goBackToSearchResults`, `downloadFacilitiesExcel`
+- Assertions: `expectSearchResults`, `expectNoFacilitiesMessage`, `expectFacilityInResults`, `expectOSIDInResults`, `expectCountryInResults`, `expectDownloadLoginPrompt`
+- Data helpers: `getResultsCount`, `getOSIDFromLocationPage`, `getOSIDFromFacilityPage`
 
 ### AdminPage
-Handles Django admin panel functionality:
-- `gotoContributors()` - Navigate to contributors admin page
-- `searchContributor(email)` - Search for a specific contributor
-- `clickFirstContributor()` - Click first contributor in results
-- `clearEmbedConfiguration()` - Clear embed settings
-- `setEmbedLevelToDeluxe()` - Set embed level to deluxe
-- `saveChanges()` - Save admin changes
-- Various verification methods
+Django admin flows for contributors and download limits.
 
+- Contributor flow: `goToContributors`, `searchContributor`, `clickFirstContributor`, `expectChangeContributorPage`, `expectAdminEmail`
+- Embed config flow: `clearEmbedConfiguration`, `setEmbedLevel`, `setEmbedLevelToDeluxe`, `saveChanges`, `expectEmbedConfigCreated`, `getEmbedConfigValue`, `expectSuccessMessageForContributor`
+- Download-limit flow: `goToDownloadLimits`, `expectDownloadLimitsPage`, `searchUserDownloadLimit`, `clickFirstRowLinkDownloadLimit`, `expectChangeDownloadLimitHeading`, `setFreeDownloadRecords`, `expectSuccessMessageForDownloadLimit`
 
+### AdminDashboardPage
+Dashboard moderation-queue navigation and access assertions.
+
+- Navigation: `goToModerationQueue`
+- Access/state checks: `expectSignInLinkVisible`, `clickSignInLink`, `isAuthenticationRequired`
+- Queue/not-found assertions: `expectModerationQueueHeading`, `expectModerationQueuePage`, `expectNotFoundHeading`
+- Utility: `getPageHeading`, `isOnModerationQueuePage`
 
 ## Usage Example
 
 ```typescript
-import { LoginPage, MainPage } from "./pages/LoginPage";
-import { MainPage } from "./pages/MainPage";
+import { test } from "@playwright/test";
+import { LoginPage } from "./LoginPage";
+import { MainPage } from "./MainPage";
 
 test("Example test using page objects", async ({ page }) => {
   const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
-  
+
   const loginPage = new LoginPage(page, BASE_URL!);
   const mainPage = new MainPage(page, BASE_URL!);
 
-  // Navigate and login
-  await mainPage.goto();
-  await mainPage.verifyPageTitle();
   await loginPage.loginToMainPage(USER_EMAIL!, USER_PASSWORD!);
-
-  // Perform search
   await mainPage.searchFacilities("Test Facility");
   await mainPage.expectSearchResults();
-
-  // Verify results
-  await mainPage.clickFirstFacility();
   await mainPage.expectFacilityInResults("Test Facility");
 });
 ```
@@ -113,4 +107,4 @@ The existing tests have been refactored to use page objects where appropriate. K
 - Encapsulated login logic in `LoginPage`
 - Centralized search and download functionality in `MainPage`
 - Moved admin operations to `AdminPage`
-- Some tests (like OSDEV-1232) continue to use direct Playwright code for specific requirements 
+- Some tests (like OSDEV-1232) continue to use direct Playwright code for specific requirements
