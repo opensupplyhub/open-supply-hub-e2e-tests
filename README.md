@@ -44,19 +44,19 @@ VERSION_TAG={version_tag}
   ```
 
 - **Tags** (embedded in test titles; filter with Playwright’s `--grep`):
-  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old and new location page UI
+  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old (v1) and new (v2) location page UI. 
   - **`@regression`** — regression scenarios that can be executed during regression testing in a pre-production environment to reduce testing time and increase test coverage
-  
+
   Examples:
 
   ```bash
-  # Smoke v1
+  # Smoke v1. Run it when enable_production_location_page is off
   npx playwright test --grep "@smokev1"
 
-  # Smoke v2
+  # Smoke v2. Run it when enable_production_location_page is on
   npx playwright test --grep "@smokev2"
 
-  # Regression only
+  # Regression
   npx playwright test --grep "@regression"
 
   # Full suite (smoke + regression + everything else)
