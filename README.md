@@ -85,13 +85,13 @@ This project includes Docker configuration for easy setup and consistent testing
 3. **Build and run tests:**
    ```bash
    # Build the Docker image
-   docker-compose build
+   docker compose build
 
    # Run container for tests
-   docker-compose up
+   docker compose up
 
    # Run all tests
-   docker-compose exec e2e-tests npm run test
+   docker compose exec e2e-tests npm run test
 
    # Run smoke by tag (same as locally)
    docker-compose exec e2e-tests npx playwright test --grep "@smokev1"
