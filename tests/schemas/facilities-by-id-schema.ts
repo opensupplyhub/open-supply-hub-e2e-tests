@@ -57,6 +57,8 @@ export const facilitiesById = {
               is_verified: { type: "boolean" },
               contributor_name: { type: "string" },
               list_name: { type: ["string", "null"] },
+              contributor_type: { type: "string" },
+              count: { type: "integer" },
             },
             required: ["name"],
             additionalProperties: false,

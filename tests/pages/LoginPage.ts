@@ -68,7 +68,7 @@ export class LoginPage extends BasePage {
     await this.myAccountButton().click();
     await this.settingsLink().click();
     await this.page.isVisible(`text=${email}`);
-    await this.myAccountButton().click();
+
   }
 
   // Admin panel authentication methods

@@ -14,7 +14,10 @@ export class MainPage extends BasePage {
   private loginButton = () => this.page.getByRole("button", { name: "LOG IN" });
   private noFacilitiesMessage = () => this.page.getByText("No facilities matching this");
   private contributorsText = () => this.page.getByText("# Contributors");
-  private facilityLinks = () => this.page.locator('a[href*="/facilities/"]');
+  private facilityLinks = () =>
+    this.page.locator(
+      'a[href*="/facilities/"], a[href*="/production-locations/"]'
+    );
   private resultsText = () => this.page.getByText(/^\d+ results$/);
 
   // Filter dropdowns
@@ -126,6 +129,14 @@ export class MainPage extends BasePage {
   async getResultsCount(): Promise<number> {
     const text = await this.resultsText().textContent();
     return parseInt(text?.match(/\d+/)?.[0] || "0", 10);
+  }
+
+  async getOSIDFromLocationPage(): Promise<string> {
+    const osIdHeading = this.page.getByTestId("os-id");
+    await this.expectToBeVisible(osIdHeading);
+    const text = (await osIdHeading.textContent()) ?? "";
+    const match = text.match(/OS ID:\s*(\S+)/i);
+    return (match?.[1] ?? text).trim();
   }
 
   async getOSIDFromFacilityPage(): Promise<string> {
