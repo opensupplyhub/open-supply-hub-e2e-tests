@@ -12,7 +12,6 @@ export class LoginPage extends BasePage {
   private logoutButton = () => this.page.getByRole("button", { name: "Log Out" });
   private loginRegisterLink = () => this.page.getByRole("link", { name: "Login/Register" });
   private settingsLink = () => this.page.getByRole("link", { name: "Settings" });
-  private acceptButton = () => this.page.getByRole("button", { name: "Accept" });
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -21,32 +20,25 @@ export class LoginPage extends BasePage {
   // Main page authentication methods
   async loginToMainPage(email: string, password: string) {
     await this.goTo();
-    
-    // Accept cookies if present
-    try {
-      await this.acceptButton().click();
-    } catch (error) {
-      console.log(`An error has happened during accepting cookies: ${error}`);
-    }
-
-    // Navigate to login
+    await this.acceptCookiesIfPresent();
     await this.loginRegisterLink().click();
-    
-    // Fill credentials
-    await this.emailInput().fill(email);
-    await this.passwordInput().fill(password);
-    await this.loginButton().click();
-    
-    // Wait for successful login
+    await this.completeLoginForm(email, password);
+    await this.expectToBeVisible(this.myAccountButton());
+  }
+
+  async loginViaAuthPage(email: string, password: string) {
+    await this.goTo("/auth/login");
+    await this.page.locator("#LOGIN_EMAIL").fill(email);
+    await this.page.locator("#LOGIN_PASSWORD").fill(password);
+    await this.page.getByRole("button", { name: "LOG IN" }).click();
     await this.expectToBeVisible(this.myAccountButton());
   }
 
   async completeLoginForm(email: string, password: string) {
-    // Fill credentials
     await this.emailInput().fill(email);
     await this.passwordInput().fill(password);
     await this.loginButton().click();
-    
+
     await this.waitForLoadState();
     await this.page.waitForTimeout(2000);
   }
@@ -54,12 +46,10 @@ export class LoginPage extends BasePage {
   async logoutFromMainPage() {
     await this.myAccountButton().click();
     await this.expectToBeVisible(this.logoutButton());
-    await this.logoutButton().click();
-    
-    // Wait for logout response
+    await this.logoutButton().click({ force: true });
+
     await this.waitForResponse("/user-logout/", 204);
-    
-    // Verify logout
+
     await expect(this.page.getByText("text=My Account")).not.toBeVisible();
     await this.expectToBeVisible(this.loginRegisterLink());
   }
@@ -68,24 +58,21 @@ export class LoginPage extends BasePage {
     await this.myAccountButton().click();
     await this.settingsLink().click();
     await this.page.isVisible(`text=${email}`);
-
+    await this.myAccountButton().click();
   }
 
   // Admin panel authentication methods
   async loginToAdminPanel(email: string, password: string) {
     await this.goTo("/admin/");
-    
-    // Verify we're on admin login page
+
     const title = await this.page.title();
     expect(title).toBe("Log in | Django site admin");
     await this.expectToBeVisible(this.page.getByText("Open Supply Hub Admin"));
-    
-    // Fill admin credentials
+
     await this.adminEmailInput().fill(email);
     await this.adminPasswordInput().fill(password);
     await this.loginButton().click();
-    
-    // Verify successful admin login
+
     await this.expectToBeVisible(this.page.getByRole("link", { name: "Open Supply Hub Admin" }));
     await this.expectToBeVisible(this.page.getByText("Site administration"));
     await this.expectToBeVisible(this.page.getByRole("button", { name: "Log out" }));
@@ -93,7 +80,7 @@ export class LoginPage extends BasePage {
 
   async logoutFromAdminPanel() {
     await this.page.getByRole("button", { name: "Log out" }).click();
-    
+
     await expect(this.page.getByText("Log in again")).toBeVisible();
   }
 
@@ -129,4 +116,4 @@ export class LoginPage extends BasePage {
       return false;
     }
   }
-} 
+}

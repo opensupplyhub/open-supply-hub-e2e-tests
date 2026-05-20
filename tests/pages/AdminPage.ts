@@ -125,6 +125,13 @@ export class AdminPage extends BasePage {
     await this.waitForLoadState();
   }
 
+  async setUserFreeDownloadQuota(userEmail: string, freeRecords: string) {
+    await this.goToDownloadLimits();
+    await this.searchUserDownloadLimit(userEmail);
+    await this.clickFirstRowLinkDownloadLimit();
+    await this.setFreeDownloadRecords(freeRecords);
+  }
+
   async expectSuccessMessageForDownloadLimit() {
     await this.expectToBeVisible(this.successMessageForDownloadLimit());
   }

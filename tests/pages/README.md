@@ -21,22 +21,23 @@ Base class extended by all page objects.
 
 - Navigation: (`goTo`, `getCurrentUrl()`)
 - Wait helpers: (`waitForLoadState`, `waitForResponse`)
-- Common interactions: (`clickButton`, `clickLink`, `fillInput`)
+- Common interactions: (`clickButton`, `clickLink`, `fillInput`, `acceptCookiesIfPresent`)
 - Assertion helpers: (`expectToBeVisible`, `expectToHaveText`, `expectToHaveValue`)
 
 ### LoginPage
 Authentication flows for both the main app and Django admin.
 
-- Main app: `loginToMainPage`, `completeLoginForm`, `logoutFromMainPage`, `verifyMainPageLogin`, `isLoggedIn`
+- Main app: `loginToMainPage`, `loginViaAuthPage`, `completeLoginForm`, `logoutFromMainPage`, `verifyMainPageLogin`, `isLoggedIn`
 - Admin app: `loginToAdminPanel`, `logoutFromAdminPanel`, `verifyAdminPanelLogin`, `isAdminLoggedIn`
 - Utility: `getPageTitle`
 
 ### MainPage
-Public main-site search and results behavior.
+Public main-site search, results, and download-quota UI behavior.
 
-- Navigation/title: `goTo`, `verifyPageTitle`
+- Navigation/title: `goTo`, `verifyPageTitle`, `goToFilteredFacilitiesSearch`, `goToUnfilteredFacilitiesSearch`
 - Search and filters: `searchFacilities`, `searchByOSID`, `searchByCountry`, `searchByFacilityType`, `searchByWorkerRange`, `performSearch`
-- Results actions: `clickFirstFacility`, `goBackToSearchResults`, `downloadFacilitiesExcel`
+- Results actions: `clickFirstFacility`, `goBackToSearchResults`, `downloadFacilities`, `downloadFacilitiesExcel`
+- Download quota UI: lead-in copy, purchase button, tooltips (`expectDownloadLeadIn*`, `expectPurchaseButton*`, `expectOverQuotaPurchaseTooltip`, etc.)
 - Assertions: `expectSearchResults`, `expectNoFacilitiesMessage`, `expectFacilityInResults`, `expectOSIDInResults`, `expectCountryInResults`, `expectDownloadLoginPrompt`
 - Data helpers: `getResultsCount`, `getOSIDFromLocationPage`, `getOSIDFromFacilityPage`
 
@@ -45,7 +46,7 @@ Django admin flows for contributors and download limits.
 
 - Contributor flow: `goToContributors`, `searchContributor`, `clickFirstContributor`, `expectChangeContributorPage`, `expectAdminEmail`
 - Embed config flow: `clearEmbedConfiguration`, `setEmbedLevel`, `setEmbedLevelToDeluxe`, `saveChanges`, `expectEmbedConfigCreated`, `getEmbedConfigValue`, `expectSuccessMessageForContributor`
-- Download-limit flow: `goToDownloadLimits`, `expectDownloadLimitsPage`, `searchUserDownloadLimit`, `clickFirstRowLinkDownloadLimit`, `expectChangeDownloadLimitHeading`, `setFreeDownloadRecords`, `expectSuccessMessageForDownloadLimit`
+- Download-limit flow: `goToDownloadLimits`, `setUserFreeDownloadQuota`, `setFreeDownloadRecords`, `expectSuccessMessageForDownloadLimit`
 
 ### AdminDashboardPage
 Dashboard moderation-queue navigation and access assertions.
