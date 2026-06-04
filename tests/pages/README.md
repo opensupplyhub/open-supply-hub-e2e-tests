@@ -11,6 +11,7 @@ tests/pages/
 ├── MainPage.ts          # Main page functionality (search, navigation, downloads)
 ├── AdminPage.ts         # Django admin contributor/download-limit operations
 ├── AdminDashboardPage.ts  # Dashboard moderation queue access and assertions
+├── EmbeddedMapPage.ts   # Embedded map iframe (download limits via testEM-upto10000.html)
 └── README.md           # This documentation
 ```
 
@@ -34,10 +35,11 @@ Authentication flows for both the main app and Django admin.
 ### MainPage
 Public main-site search, results, and download-quota UI behavior.
 
-- Navigation/title: `goTo`, `verifyPageTitle`, `goToFilteredFacilitiesSearch`, `goToUnfilteredFacilitiesSearch`
+- Navigation/title: `goTo`, `verifyPageTitle`, `goToFilteredFacilitiesSearch`, `goToFilteredFacilitiesSearchWithReload`, `goToUnfilteredFacilitiesSearch`
 - Search and filters: `searchFacilities`, `searchByOSID`, `searchByCountry`, `searchByFacilityType`, `searchByWorkerRange`, `performSearch`
 - Results actions: `clickFirstFacility`, `goBackToSearchResults`, `downloadFacilities`, `downloadFacilitiesExcel`
 - Download quota UI: lead-in copy, purchase button, tooltips (`expectDownloadLeadIn*`, `expectPurchaseButton*`, `expectOverQuotaPurchaseTooltip`, etc.)
+- Private instance / per-search cap: `expectPerSearchDownloadLimitTooltip`, `expectResultsWithinPerSearchCap`, `expectAnnualQuotaUiHidden`
 - Assertions: `expectSearchResults`, `expectNoFacilitiesMessage`, `expectFacilityInResults`, `expectOSIDInResults`, `expectCountryInResults`, `expectDownloadLoginPrompt`
 - Data helpers: `getResultsCount`, `getOSIDFromLocationPage`, `getOSIDFromFacilityPage`
 
@@ -47,6 +49,16 @@ Django admin flows for contributors and download limits.
 - Contributor flow: `goToContributors`, `searchContributor`, `clickFirstContributor`, `expectChangeContributorPage`, `expectAdminEmail`
 - Embed config flow: `clearEmbedConfiguration`, `setEmbedLevel`, `setEmbedLevelToDeluxe`, `saveChanges`, `expectEmbedConfigCreated`, `getEmbedConfigValue`, `expectSuccessMessageForContributor`
 - Download-limit flow: `goToDownloadLimits`, `setUserFreeDownloadQuota`, `setFreeDownloadRecords`, `expectSuccessMessageForDownloadLimit`
+- Waffle switches: `goToWaffleSwitches`, `setWaffleSwitchActive` (e.g. `private_instance`)
+
+### EmbeddedMapPage
+Download UI inside an embedded map loaded from `tests/data/testEM-upto10000.html`.
+
+- Fixture: `openFixture`, `waitForMapReady`
+- Embed cap (10k results per search): `expectResultsWithinEmbedCap`, `expectEmbedResultsLimitTooltip`
+- Auth/download: `expectEmbedResultsLimitTooltip`, `expectDownloadMenuOptions`
+- Embed has no annual quota UI: `expectAnnualQuotaUiHidden`
+- Data helpers: `getResultsCount`
 
 ### AdminDashboardPage
 Dashboard moderation-queue navigation and access assertions.

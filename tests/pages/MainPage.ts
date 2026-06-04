@@ -1,6 +1,9 @@
 import { Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
-import { FILTERED_FACILITIES_PATH } from "../utils/downloadLimits";
+import {
+  EMBED_DOWNLOAD_RESULTS_LIMIT,
+  FILTERED_FACILITIES_PATH,
+} from "../utils/downloadLimits";
 
 export class MainPage extends BasePage {
   // Locators
@@ -112,6 +115,13 @@ export class MainPage extends BasePage {
     await this.goToFacilitiesSearch(FILTERED_FACILITIES_PATH);
   }
 
+  async goToFilteredFacilitiesSearchWithReload() {
+    await this.goToFacilitiesSearch(FILTERED_FACILITIES_PATH);
+    await this.page.reload({ waitUntil: "networkidle" });
+    await this.acceptCookiesIfPresent();
+    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
+  }
+
   async goToUnfilteredFacilitiesSearch() {
     await this.goToFacilitiesSearch("/facilities/");
   }
@@ -158,6 +168,23 @@ export class MainPage extends BasePage {
 
   async expectAnonymousDownloadTooltip() {
     await expect(this.tooltip()).toContainText("Log in or sign up to download this dataset.");
+  }
+
+  async expectPerSearchDownloadLimitTooltip() {
+    await expect(this.tooltip()).toContainText(
+      `Downloads are supported for searches resulting in ${EMBED_DOWNLOAD_RESULTS_LIMIT} production locations or less`
+    );
+  }
+
+  async expectResultsWithinPerSearchCap() {
+    const resultCount = await this.getResultsCount();
+    expect(resultCount).toBeGreaterThan(0);
+    expect(resultCount).toBeLessThanOrEqual(EMBED_DOWNLOAD_RESULTS_LIMIT);
+  }
+
+  async expectAnnualQuotaUiHidden() {
+    await this.expectPurchaseButtonHidden();
+    await this.expectDownloadLeadInHidden();
   }
 
   async expectDownloadMenuOptions() {
