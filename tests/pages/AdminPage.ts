@@ -125,7 +125,53 @@ export class AdminPage extends BasePage {
     await this.waitForLoadState();
   }
 
+  async setUserFreeDownloadQuota(userEmail: string, freeRecords: string) {
+    await this.goToDownloadLimits();
+    await this.searchUserDownloadLimit(userEmail);
+    await this.clickFirstRowLinkDownloadLimit();
+    await this.setFreeDownloadRecords(freeRecords);
+  }
+
   async expectSuccessMessageForDownloadLimit() {
     await this.expectToBeVisible(this.successMessageForDownloadLimit());
+  }
+
+  async goToWaffleSwitches() {
+    await this.goTo("/admin/waffle/switch/");
+    await this.expectToBeVisible(this.page.getByText("Select switch to change"));
+  }
+
+  async openWaffleSwitchChangeForm(switchName: string) {
+    await this.goToWaffleSwitches();
+    await this.searchInput().fill(switchName);
+    await this.searchButton().click();
+    await this.waitForLoadState();
+
+    const row = this.page.locator("table#result_list tbody tr").filter({ hasText: switchName });
+    await expect(row).toHaveCount(1);
+    await row.locator("a").first().click();
+    await this.waitForLoadState();
+    await this.expectToBeVisible(this.page.locator("#id_active"));
+  }
+
+  async setWaffleSwitchActive(switchName: string, active: boolean) {
+    await this.openWaffleSwitchChangeForm(switchName);
+
+    const activeCheckbox = this.page.locator("#id_active");
+    const isChecked = await activeCheckbox.isChecked();
+    if (isChecked !== active) {
+      if (active) {
+        await activeCheckbox.check();
+      } else {
+        await activeCheckbox.uncheck();
+      }
+      await this.saveChanges();
+      await this.expectToBeVisible(
+        this.page.getByText("The switch").and(this.page.getByText("was changed successfully."))
+      );
+    }
+
+    await this.openWaffleSwitchChangeForm(switchName);
+    await expect(activeCheckbox).toBeChecked({ checked: active });
   }
 } 

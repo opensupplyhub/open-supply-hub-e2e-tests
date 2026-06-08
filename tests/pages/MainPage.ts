@@ -1,5 +1,9 @@
 import { Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
+import {
+  EMBED_DOWNLOAD_RESULTS_LIMIT,
+  FILTERED_FACILITIES_PATH,
+} from "../utils/downloadLimits";
 
 export class MainPage extends BasePage {
   // Locators
@@ -7,11 +11,19 @@ export class MainPage extends BasePage {
   private findFacilitiesButton = () => this.page.getByRole("button", { name: "Find Facilities" });
   private searchButton = () => this.page.getByRole("button", { name: "Search" });
   private downloadButton = () => this.page.getByRole("button", { name: "Download" });
+  private purchaseButton = () =>
+    this.page.getByRole("button", { name: "Purchase More Downloads" });
+  private csvMenuItem = () => this.page.getByRole("menuitem", { name: "CSV" });
   private excelMenuItem = () => this.page.getByRole("menuitem", { name: "Excel" });
   private loginToDownloadHeading = () => this.page.getByRole("heading", { name: "Log In To Download" });
   private cancelButton = () => this.page.getByRole("button", { name: "CANCEL" });
   private registerButton = () => this.page.getByRole("button", { name: "REGISTER" });
   private loginButton = () => this.page.getByRole("button", { name: "LOG IN" });
+  private tooltip = () => this.page.locator("[role=tooltip]");
+  private downloadLeadIn = () =>
+    this.page.getByText(
+      /All registered accounts can download up to 5000 production locations annually for free/i
+    );
   private noFacilitiesMessage = () => this.page.getByText("No facilities matching this");
   private contributorsText = () => this.page.getByText("# Contributors");
   private facilityLinks = () =>
@@ -29,8 +41,8 @@ export class MainPage extends BasePage {
     super(page, baseUrl);
   }
 
-  async goTo() {
-    await super.goTo();
+  async goTo(path: string = "") {
+    await super.goTo(path);
   }
 
   async verifyPageTitle() {
@@ -93,10 +105,54 @@ export class MainPage extends BasePage {
     await this.waitForLoadState();
   }
 
-  async downloadFacilitiesExcel() {
+  async goToFacilitiesSearch(path: string = "/facilities/") {
+    await this.goTo(path);
+    await this.acceptCookiesIfPresent();
+    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  async goToFilteredFacilitiesSearch() {
+    await this.goToFacilitiesSearch(FILTERED_FACILITIES_PATH);
+  }
+
+  async goToFilteredFacilitiesSearchWithReload() {
+    await this.goToFacilitiesSearch(FILTERED_FACILITIES_PATH);
+    await this.page.reload({ waitUntil: "networkidle" });
+    await this.acceptCookiesIfPresent();
+    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  async goToUnfilteredFacilitiesSearch() {
+    await this.goToFacilitiesSearch("/facilities/");
+  }
+
+  async openDownloadMenu() {
     await this.downloadButton().click({ force: true });
-    await this.waitForLoadState();
-    await this.excelMenuItem().click({ force: true });
+    await this.csvMenuItem().waitFor({ state: "visible" });
+  }
+
+  async downloadFacilities(format: "CSV" | "Excel") {
+    await this.openDownloadMenu();
+    const menuItem = format === "CSV" ? this.csvMenuItem() : this.excelMenuItem();
+    await menuItem.click({ force: true });
+  }
+
+  async downloadFacilitiesExcel() {
+    await this.downloadFacilities("Excel");
+  }
+
+  async hoverDownloadButton() {
+    await this.downloadButton().hover();
+    await this.tooltip().first().waitFor({ state: "visible" });
+  }
+
+  async hoverPurchaseButton() {
+    await this.purchaseButton().hover();
+    await this.tooltip().first().waitFor({ state: "visible" });
+  }
+
+  async clickPurchaseMoreDownloads() {
+    await this.purchaseButton().click();
   }
 
   async expectDownloadLoginPrompt() {
@@ -104,6 +160,77 @@ export class MainPage extends BasePage {
     await this.expectToBeVisible(this.cancelButton());
     await this.expectToBeVisible(this.registerButton());
     await this.expectToBeVisible(this.loginButton());
+  }
+
+  async expectDownloadButtonVisible() {
+    await this.expectToBeVisible(this.downloadButton());
+  }
+
+  async expectAnonymousDownloadTooltip() {
+    await expect(this.tooltip()).toContainText("Log in or sign up to download this dataset.");
+  }
+
+  async expectPerSearchDownloadLimitTooltip() {
+    await expect(this.tooltip()).toContainText(
+      `Downloads are supported for searches resulting in ${EMBED_DOWNLOAD_RESULTS_LIMIT} production locations or less`
+    );
+  }
+
+  async expectResultsWithinPerSearchCap() {
+    const resultCount = await this.getResultsCount();
+    expect(resultCount).toBeGreaterThan(0);
+    expect(resultCount).toBeLessThanOrEqual(EMBED_DOWNLOAD_RESULTS_LIMIT);
+  }
+
+  async expectAnnualQuotaUiHidden() {
+    await this.expectPurchaseButtonHidden();
+    await this.expectDownloadLeadInHidden();
+  }
+
+  async expectDownloadMenuOptions() {
+    await this.openDownloadMenu();
+    await this.expectToBeVisible(this.csvMenuItem());
+    await this.expectToBeVisible(this.excelMenuItem());
+    await this.page.keyboard.press("Escape");
+  }
+
+  async expectPurchaseButtonVisible() {
+    await this.expectToBeVisible(this.purchaseButton());
+  }
+
+  async expectPurchaseButtonHidden() {
+    await expect(this.purchaseButton()).toHaveCount(0);
+  }
+
+  async expectDownloadLeadInVisible() {
+    await this.expectToBeVisible(this.downloadLeadIn());
+  }
+
+  async expectDownloadLeadInHidden() {
+    await expect(this.downloadLeadIn()).toHaveCount(0);
+  }
+
+  async expectLeadInMentionsAnnualFreeLimit() {
+    await expect(this.downloadLeadIn()).toContainText("5000");
+    await expect(this.downloadLeadIn()).toContainText("annually");
+  }
+
+  async expectOverQuotaPurchaseTooltip(availableRecords: number) {
+    const resultCount = await this.getResultsCount();
+    await expect(this.tooltip()).toContainText(
+      `You are trying to download ${resultCount} production locations`
+    );
+    await expect(this.tooltip()).toContainText(
+      `${availableRecords} production locations available to download`
+    );
+    await expect(this.tooltip()).toContainText("Purchase additional downloads");
+  }
+
+  async expectExhaustedQuotaTooltip() {
+    await expect(this.tooltip()).toContainText(
+      "You've reached your annual download limit of 5000 production"
+    );
+    await expect(this.tooltip()).toContainText("Purchase additional downloads");
   }
 
   async expectNoFacilitiesMessage() {
@@ -148,4 +275,4 @@ export class MainPage extends BasePage {
   async goBackToSearchResults() {
     await this.page.getByRole("button", { name: "Back to search results" }).click();
   }
-} 
+}

@@ -50,4 +50,11 @@ export class BasePage {
   async getCurrentUrl(): Promise<string> {
     return this.page.url();
   }
+
+  async acceptCookiesIfPresent() {
+    const accept = this.page.getByRole("button", { name: /^accept$/i });
+    if (await accept.isVisible().catch(() => false)) {
+      await accept.click();
+    }
+  }
 } 
