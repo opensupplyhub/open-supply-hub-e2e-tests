@@ -645,7 +645,7 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
       "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang, 322002";
-    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
+    locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";
   } else {
     locationAddressCheck =
       "Yinan Industrial Zone, Yiwu";
