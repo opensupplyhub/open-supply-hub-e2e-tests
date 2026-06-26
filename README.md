@@ -94,9 +94,9 @@ This project includes Docker configuration for easy setup and consistent testing
    docker compose exec e2e-tests npm run test
 
    # Run smoke by tag (same as locally)
-   docker-compose exec e2e-tests npx playwright test --grep "@smokev1"
-   docker-compose exec e2e-tests npx playwright test --grep "@smokev2"
-   docker-compose exec e2e-tests npx playwright test --grep "@regression"
+   docker compose exec e2e-tests npx playwright test --grep "@smokev1"
+   docker compose exec e2e-tests npx playwright test --grep "@smokev2"
+   docker compose exec e2e-tests npx playwright test --grep "@regression"
    ```
 
 4. **Access test reports:**
