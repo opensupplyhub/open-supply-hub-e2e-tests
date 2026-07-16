@@ -34,7 +34,7 @@ test.describe("OSDEV-1233: Smoke Tests - API Facilities Search", () => {
       validate(facilitiesSchema, body);
     });
 
-    test("[@smokev1][@smokev2] Get list of facilities from `/facilities/?details=true` endpoint`", async ({
+    test("[@smokev1][@smokev2] Get list of facilities from `/facilities/?detail=true` endpoint", async ({
       request,
     }) => {
       const response = await get(request, "/api/facilities/?detail=true", {

@@ -51,6 +51,8 @@ export const facilitiesById = {
           type: "array",
           items: {
             type: "object",
+            required: ["name"],
+            additionalProperties: false,
             properties: {
               id: { type: "integer" },
               name: { type: "string" },
@@ -58,10 +60,16 @@ export const facilitiesById = {
               contributor_name: { type: "string" },
               list_name: { type: ["string", "null"] },
               contributor_type: { type: "string" },
+              last_contributed_at: {
+                type: ["string", "null"],
+                format: "date-time",
+              },
+              list_uploaded_at: {
+                type: ["string", "null"],
+                format: "date-time",
+              },
               count: { type: "integer" },
             },
-            required: ["name"],
-            additionalProperties: false,
           },
         },
       },

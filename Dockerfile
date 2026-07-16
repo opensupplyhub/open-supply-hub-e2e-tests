@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.40.0-focal
+FROM mcr.microsoft.com/playwright:v1.61.1-noble
 
 WORKDIR /app
 
@@ -7,8 +7,6 @@ COPY package*.json ./
 RUN npm ci --only=production=false
 
 COPY . .
-
-RUN npx playwright install --with-deps
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
