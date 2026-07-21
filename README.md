@@ -44,7 +44,7 @@ VERSION_TAG={version_tag}
   ```
 
 - **Tags** (embedded in test titles; filter with Playwright’s `--grep`):
-  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old (v1) and new (v2) location page UI. 
+  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old (v1) and new (v2) location page UI. They differ only in the location detail page after a search: v1 asserts the legacy `/facilities/` page, while v2 asserts the new `/production-locations/` page. 
   - **`@regression`** — regression scenarios that can be executed during regression testing in a pre-production environment to reduce testing time and increase test coverage
 
   Examples:
