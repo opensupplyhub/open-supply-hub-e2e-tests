@@ -44,7 +44,7 @@ VERSION_TAG={version_tag}
   ```
 
 - **Tags** (embedded in test titles; filter with Playwright’s `--grep`):
-  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old (v1) and new (v2) location page UI. 
+  - **`@smokev1`** / **`@smokev2`** — two smoke test suites that support running tests for both the old (v1) and new (v2) location page UI. They differ only in the location detail page after a search: v1 asserts the legacy `/facilities/` page, while v2 asserts the new `/production-locations/` page. To choose which suite to run, check the `enable_production_location_page` switch in the Django admin panel: run `@smokev2` when it is enabled, and `@smokev1` when it is disabled.
   - **`@regression`** — regression scenarios that can be executed during regression testing in a pre-production environment to reduce testing time and increase test coverage
 
   Examples:
