@@ -2,7 +2,7 @@ import { test, expect, chromium, Frame } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import { LoginPage } from "./pages/LoginPage";
-import { MainPage } from "./pages/MainPage";
+import { MainPage, MAP_PATH } from "./pages/MainPage";
 import { AdminPage } from "./pages/AdminPage";
 import path from "path";
 import fs from "fs";
@@ -644,8 +644,8 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
     locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang, 322002";
-    locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";
+      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else {
     locationAddressCheck =
       "Yinan Industrial Zone, Yiwu";
@@ -1020,7 +1020,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       page,
     }) => {
       const { BASE_URL } = process.env;
-      await page.goto(BASE_URL!);
+      await page.goto(`${BASE_URL}${MAP_PATH}`);
 
       // Open the country dropdown
       const countryDropdown = page
@@ -1074,7 +1074,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       page,
     }) => {
       const { BASE_URL } = process.env;
-      await page.goto(BASE_URL!);
+      await page.goto(`${BASE_URL}${MAP_PATH}`);
       await page.getByRole("button", { name: "Find Facilities" }).click();
       await page.waitForLoadState("networkidle");
 
@@ -1171,7 +1171,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
       page,
     }) => {
       const { BASE_URL } = process.env;
-      await page.goto(BASE_URL!);
+      await page.goto(`${BASE_URL}${MAP_PATH}`);
       await page.getByRole("button", { name: "Find Facilities" }).click();
       await page.waitForLoadState("networkidle");
 
@@ -1303,7 +1303,7 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     }) => {
       const { BASE_URL } = process.env;
 
-      await page.goto(BASE_URL!);
+      await page.goto(`${BASE_URL}${MAP_PATH}`);
       await page.getByRole("button", { name: "Find Facilities" }).click();
       await page.waitForLoadState("networkidle");
 
@@ -1629,7 +1629,7 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
       `[@smokev2] OSDEV-1232 v2: Facilities. Country Search - ${countryName}`,
       async ({ page }) => {
         const { BASE_URL } = process.env;
-        await page.goto(BASE_URL!);
+        await page.goto(`${BASE_URL}${MAP_PATH}`);
 
         // Open the country dropdown
         const countryDropdown = page
@@ -1693,7 +1693,7 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
       `[@smokev2] OSDEV-1232 v2: Facilities. Facility Type Search - ${facilityType}`,
       async ({ page }) => {
         const { BASE_URL } = process.env;
-        await page.goto(BASE_URL!);
+        await page.goto(`${BASE_URL}${MAP_PATH}`);
         await page.getByRole("button", { name: "Find Facilities" }).click();
         await page.waitForLoadState("networkidle");
 
@@ -1780,7 +1780,7 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
       `[@smokev2] OSDEV-1232 v2: Facilities. Filter by Number of Workers - ${testCase.range}`,
       async ({ page }) => {
         const { BASE_URL } = process.env;
-        await page.goto(BASE_URL!);
+        await page.goto(`${BASE_URL}${MAP_PATH}`);
         await page.getByRole("button", { name: "Find Facilities" }).click();
         await page.waitForLoadState("networkidle");
 
@@ -1861,7 +1861,7 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
         async ({ page }) => {
           const { BASE_URL } = process.env;
 
-          await page.goto(BASE_URL!);
+          await page.goto(`${BASE_URL}${MAP_PATH}`);
           await page.getByRole("button", { name: "Find Facilities" }).click();
           await page.waitForLoadState("networkidle");
 

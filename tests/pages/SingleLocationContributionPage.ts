@@ -125,8 +125,7 @@ export class SingleLocationContributionPage extends BasePage {
 
     await this.page.getByPlaceholder("Type a name").fill(data.name);
     await this.page.getByPlaceholder("Address").fill(data.address);
-    await this.page.getByPlaceholder("Type a name").blur();
-    await this.page.getByPlaceholder("Address").blur();
+
     await this.selectSearchCountry(data.country);
 
     await this.page.getByRole("button", { name: "Search" }).click();
