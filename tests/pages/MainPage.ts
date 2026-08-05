@@ -5,6 +5,8 @@ import {
   FILTERED_FACILITIES_PATH,
 } from "../utils/downloadLimits";
 
+export const MAP_PATH = "/map";
+
 export class MainPage extends BasePage {
   // Locators
   private searchInput = () => this.page.getByPlaceholder("e.g. ABC Textiles Limited");
@@ -22,7 +24,7 @@ export class MainPage extends BasePage {
   private tooltip = () => this.page.locator("[role=tooltip]");
   private downloadLeadIn = () =>
     this.page.getByText(
-      /All registered accounts can download up to 5000 production locations annually for free/i
+      /All registered accounts can download up to 5000 production locations annually for free./i
     );
   private noFacilitiesMessage = () => this.page.getByText("No facilities matching this");
   private contributorsText = () => this.page.getByText("# Contributors");
@@ -41,7 +43,7 @@ export class MainPage extends BasePage {
     super(page, baseUrl);
   }
 
-  async goTo(path: string = "") {
+  async goTo(path: string = MAP_PATH) {
     await super.goTo(path);
   }
 

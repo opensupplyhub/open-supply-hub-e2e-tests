@@ -1,5 +1,6 @@
 import { Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
+import { MAP_PATH } from "./MainPage";
 
 export class LoginPage extends BasePage {
   // Locators
@@ -19,7 +20,7 @@ export class LoginPage extends BasePage {
 
   // Main page authentication methods
   async loginToMainPage(email: string, password: string) {
-    await this.goTo();
+    await this.goTo(MAP_PATH);
     await this.acceptCookiesIfPresent();
     await this.loginRegisterLink().click();
     await this.completeLoginForm(email, password);

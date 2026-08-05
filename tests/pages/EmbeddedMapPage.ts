@@ -52,7 +52,7 @@ export class EmbeddedMapPage {
   private tooltip = () => this.mapFrame().locator("[role=tooltip]");
   private annualQuotaLeadIn = () =>
     this.mapFrame().getByText(
-      /All registered accounts can download up to 5000 production locations annually for free/i
+      /All registered accounts can download up to 5000 production locations annually for free./i
     );
   private resultsText = () => this.mapFrame().getByText(/^\d+ results$/);
 

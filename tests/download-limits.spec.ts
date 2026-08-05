@@ -271,14 +271,14 @@ test.describe("[@Regression] OSDEV-1264 Private instance mode (10k cap, no annua
   });
 
   test.describe("Main site facilities search", () => {
-    test("[@Regression] OSDEV-1264 private instance: anonymous user sees 10k download cap tooltip on Download hover", async ({
+    test("[@Regression] OSDEV-1264 private instance: anonymous user sees request to Log in tooltip on Download hover", async ({
       page,
     }) => {
       const mainPage = await openFilteredSearchInPrivateInstance(page);
       await mainPage.expectResultsWithinPerSearchCap();
       await mainPage.expectAnnualQuotaUiHidden();
       await mainPage.hoverDownloadButton();
-      await mainPage.expectPerSearchDownloadLimitTooltip();
+      await mainPage.expectAnonymousDownloadTooltip();
     });
 
     test("[@Regression] OSDEV-1264 private instance: anonymous user can open Download menu with CSV and Excel", async ({
