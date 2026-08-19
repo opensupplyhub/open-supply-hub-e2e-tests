@@ -174,4 +174,103 @@ export class AdminPage extends BasePage {
     await this.openWaffleSwitchChangeForm(switchName);
     await expect(activeCheckbox).toBeChecked({ checked: active });
   }
+
+  async goToSources(listOnly = false) {
+    const path = listOnly
+      ? "/admin/api/source/?source_type__exact=LIST"
+      : "/admin/api/source/";
+    await this.goTo(path);
+    await this.waitForLoadState();
+  }
+
+  async filterSourcesByListType() {
+    const listFilter = this.page.locator("#changelist-filter a", {
+      hasText: "LIST",
+    });
+    if (await listFilter.isVisible().catch(() => false)) {
+      await listFilter.click();
+      await this.waitForLoadState();
+    }
+  }
+
+  async openFirstSource() {
+    const link = this.page.locator("#result_list tbody tr th a").first();
+    await expect(link).toBeVisible({ timeout: 20000 });
+    await link.click();
+    await this.waitForLoadState();
+  }
+
+  async setSourceIsActive(active: boolean) {
+    const checkbox = this.page.locator("#id_is_active");
+    await expect(checkbox).toBeVisible();
+    const isChecked = await checkbox.isChecked();
+    if (isChecked !== active) {
+      if (active) {
+        await checkbox.check();
+      } else {
+        await checkbox.uncheck();
+      }
+    }
+  }
+
+  async expectSourceIsActive(active: boolean) {
+    await expect(this.page.locator("#id_is_active")).toBeChecked({
+      checked: active,
+    });
+  }
+
+  async changeSourceContributorBySearch(searchText: string) {
+    const contributor = this.page.locator("#id_contributor");
+    await expect(contributor).toBeVisible();
+
+    const currentValue = await contributor.inputValue().catch(() => "");
+    const select2 = this.page.locator(".select2-selection").first();
+    if (await select2.isVisible().catch(() => false)) {
+      await select2.click();
+      const search = this.page.locator(".select2-search__field");
+      await search.fill(searchText);
+      await this.page.waitForTimeout(1500);
+      const options = this.page.locator(
+        ".select2-results__option:not(.select2-results__option--load-more):not(.select2-results__message)",
+      );
+      await expect(options.first()).toBeVisible({ timeout: 15000 });
+      const count = await options.count();
+      for (let i = 0; i < count; i++) {
+        const option = options.nth(i);
+        const text = ((await option.textContent()) || "").trim();
+        const optionId = (await option.getAttribute("id")) || "";
+        if (!text || /loading|no results/i.test(text)) {
+          continue;
+        }
+        // Prefer an option different from the current selection when possible
+        if (currentValue && optionId.includes(`-${currentValue}-`)) {
+          continue;
+        }
+        await option.click();
+        return;
+      }
+      await options.first().click();
+      return;
+    }
+
+    const options = await contributor.locator("option").all();
+    for (const option of options) {
+      const label = ((await option.textContent()) || "").trim();
+      const value = (await option.getAttribute("value")) || "";
+      if (
+        label &&
+        label.toLowerCase().includes(searchText.toLowerCase()) &&
+        value &&
+        value !== currentValue
+      ) {
+        await contributor.selectOption(value);
+        return;
+      }
+    }
+    await contributor.selectOption({ label: searchText });
+  }
+
+  async getSourceChangeUrl(): Promise<string> {
+    return this.page.url();
+  }
 } 

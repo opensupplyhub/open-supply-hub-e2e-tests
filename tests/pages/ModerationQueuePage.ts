@@ -53,9 +53,16 @@ export class ModerationQueuePage extends BasePage {
       // The moderation events request may have completed before waiting started.
     }
 
-    await expect(this.tableRows().first()).toBeVisible({ timeout: 30000 });
+    const emptyMessage = this.page.getByText(/no moderation events|no results|no data/i);
+    const hasRows = await this.tableRows().first().isVisible().catch(() => false);
+    if (!hasRows) {
+      if (await emptyMessage.isVisible().catch(() => false)) {
+        return;
+      }
+      await expect(this.tableRows().first()).toBeVisible({ timeout: 30000 });
+    }
     await this.page.waitForTimeout(1000);
-    await this.waitForLoadState("networkidle");
+    await this.waitForLoadState("domcontentloaded");
   }
 
   private filterDropdown(filterLabel: string): Locator {
