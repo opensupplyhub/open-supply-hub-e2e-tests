@@ -547,24 +547,51 @@ export async function fetchFacilitiesByCountry(
   return features;
 }
 
-export async function fetchFacilitySplitMatches(page: Page, osId: string) {
-  const { BASE_URL } = process.env;
-  const response = await page.request.get(
-    `${BASE_URL}/api/facilities/${osId}/split/`,
-  );
-  if (!response.ok()) {
-    return [] as Array<{
-      id: number;
-      name?: string;
-      address?: string;
-    }>;
+export type SplitMatch = {
+  id: number;
+  name?: string;
+  address?: string;
+  transferred_from?: string;
+};
+
+export function parseSplitMatches(body: unknown): SplitMatch[] {
+  if (!body || typeof body !== "object") {
+    return [];
   }
-  const body = await response.json();
-  return (body.matches ?? []) as Array<{
-    id: number;
-    name?: string;
-    address?: string;
-  }>;
+  const rec = body as Record<string, unknown>;
+  const nested = rec.facility as { matches?: unknown } | undefined;
+  const raw = rec.matches ?? rec.results ?? nested?.matches ?? rec.data;
+  return Array.isArray(raw) ? (raw as SplitMatch[]) : [];
+}
+
+export async function fetchFacilitySplitMatches(page: Page, osId: string) {
+  // Admin session + CSRF (token-only / bare fetch often returns matches: []).
+  const result = await page.evaluate(async (id) => {
+    const cookieMatch = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+    const csrf = cookieMatch ? decodeURIComponent(cookieMatch[1]) : "";
+    const response = await fetch(`/api/facilities/${id}/split/`, {
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(csrf ? { "X-CSRFToken": csrf } : {}),
+      },
+    });
+    const text = await response.text();
+    let body: unknown = null;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+    return { ok: response.ok, status: response.status, body };
+  }, osId);
+
+  if (!result.ok) {
+    throw new Error(
+      `GET /api/facilities/${osId}/split/ failed: HTTP ${result.status}`,
+    );
+  }
+  return parseSplitMatches(result.body);
 }
 
 export async function fetchPendingReopeningReports(page: Page) {

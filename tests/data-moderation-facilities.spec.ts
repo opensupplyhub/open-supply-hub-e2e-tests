@@ -172,25 +172,67 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
-    // Ticket data: first two from MX contributors_desc. /split/ is only for
-    // match counts on those OS IDs, not to scan the list.
+    // Comment 36433: first two from MX contributors_desc.
     const facilities = await fetchFacilitiesByCountry(page, "MX", 50);
     expect(facilities.length).toBeGreaterThanOrEqual(2);
     const source = facilities[0];
     const alternate = facilities[1];
 
-    const matchesBefore = await fetchFacilitySplitMatches(page, source.id);
-
     const adjust = new AdjustFacilityMatchesPage(page, BASE_URL!);
     await adjust.goToAdjust();
-    await adjust.searchOsId(source.id);
+    await adjust.expectPage();
+
+    const sourceBefore = await adjust.searchOsId(source.id);
+    expect(
+      sourceBefore.length,
+      "Source facility must have more than 3 matches (GET .../split/ from Adjust search)",
+    ).toBeGreaterThan(3);
+    const alternateBefore = await fetchFacilitySplitMatches(page, alternate.id);
+
     await adjust.transferFirstMatchTo(alternate.id);
 
-    const afterTransfer = await fetchFacilitySplitMatches(page, source.id);
-    expect(afterTransfer.length).toBe(matchesBefore.length - 1);
+    await expect
+      .poll(async () => (await fetchFacilitySplitMatches(page, source.id)).length, {
+        timeout: 30000,
+        intervals: [1000, 2000],
+      })
+      .toBe(sourceBefore.length - 1);
+
+    const alternateAfter = await fetchFacilitySplitMatches(page, alternate.id);
+    expect(alternateAfter.length).toBe(alternateBefore.length + 1);
+    expect(
+      alternateAfter.some((match) => match.transferred_from === source.id),
+    ).toBe(true);
 
     await adjust.searchOsId(source.id);
-    await adjust.promoteMatchWithDifferentName(source.properties?.name || "");
+    const leftName = (await adjust.leftPanelName()) || source.properties?.name || "";
+    const afterTransfer = await fetchFacilitySplitMatches(page, source.id);
+    const differing = afterTransfer.find(
+      (match) =>
+        (match.name || "").trim().toLowerCase() !== leftName.trim().toLowerCase(),
+    );
+    expect(
+      differing?.name,
+      "Need a match whose Name differs from the left-panel facility",
+    ).toBeTruthy();
+
+    const promoteResponse = await adjust.promoteMatchNamedDifferently(
+      leftName,
+      differing!.name,
+    );
+    const promoted = await promoteResponse.json();
+    const promotedName =
+      promoted.properties?.name || promoted.name || differing!.name;
+    if (differing!.name) {
+      expect(String(promotedName).toLowerCase()).toBe(
+        differing!.name.trim().toLowerCase(),
+      );
+    }
+
+    await adjust.searchOsId(source.id);
+    await expect(page.getByText(differing!.name!, { exact: false }).first()).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test("[@regression] OSDEV-1297: Split a Facility on Adjust Facility Matches", async ({
@@ -205,11 +247,9 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     const facilities = await fetchFacilitiesByCountry(page, "MX", 50);
     expect(facilities.length).toBeGreaterThanOrEqual(1);
     const source = facilities[0];
-    const matchesBefore = await fetchFacilitySplitMatches(page, source.id);
-
     const adjust = new AdjustFacilityMatchesPage(page, BASE_URL!);
     await adjust.goToAdjust();
-    await adjust.searchOsId(source.id);
+    const matchesBefore = await adjust.searchOsId(source.id);
     await adjust.splitFirstMatch();
 
     const after = await fetchFacilitySplitMatches(page, source.id);
