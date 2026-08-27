@@ -64,7 +64,7 @@ async function loginAndOpenFilteredSearchInPrivateInstance(page: Page) {
   return mainPage;
 }
 
-test.describe("[@Regression] Data download quotas and UI", () => {
+test.describe("[@regression] Data download quotas and UI", () => {
   test.beforeAll(async () => {
     await resetPrivateInstanceMode();
   });
@@ -75,7 +75,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
   });
 
   test.describe("Anonymous & authentication", () => {
-    test("[@Regression] OSDEV-2069: anonymous user sees login tooltip on Download hover", async ({
+    test("[@regression] OSDEV-2069: anonymous user sees login tooltip on Download hover", async ({
       page,
     }) => {
       const { mainPage } = createPages(page);
@@ -84,7 +84,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectAnonymousDownloadTooltip();
     });
 
-    test("[@Regression] OSDEV-2069: anonymous user is prompted to log in when selecting Excel download", async ({
+    test("[@regression] OSDEV-2069: anonymous user is prompted to log in when selecting Excel download", async ({
       page,
     }) => {
       const { mainPage } = createPages(page);
@@ -99,7 +99,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await resetUserFreeDownloadQuota();
     });
 
-    test("[@Regression] OSDEV-2080: lead-in is hidden when results are within annual quota", async ({
+    test("[@regression] OSDEV-2080: lead-in is hidden when results are within annual quota", async ({
       page,
     }) => {
       const mainPage = await loginAndOpenFilteredSearch(page);
@@ -111,7 +111,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectPurchaseButtonHidden();
     });
 
-    test("[@Regression] OSDEV-2105: lead-in is visible when filtered results exceed remaining quota", async ({
+    test("[@regression] OSDEV-2105: lead-in is visible when filtered results exceed remaining quota", async ({
       page,
     }) => {
       await setUserFreeDownloadQuota("100");
@@ -121,7 +121,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectLeadInMentionsAnnualFreeLimit();
     });
 
-    test("[@Regression] OSDEV-2682: lead-in is hidden on unfiltered search", async ({ page }) => {
+    test("[@regression] OSDEV-2682: lead-in is hidden on unfiltered search", async ({ page }) => {
       await setUserFreeDownloadQuota("100");
       const { mainPage, loginPage, userEmail, userPassword } = createPages(page);
       await loginPage.loginViaAuthPage(userEmail, userPassword);
@@ -130,7 +130,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectDownloadLeadInHidden();
     });
 
-    test("[@Regression] lead-in is hidden for anonymous users", async ({ page }) => {
+    test("[@regression] lead-in is hidden for anonymous users", async ({ page }) => {
       const { mainPage } = createPages(page);
       await mainPage.goToFilteredFacilitiesSearch();
       await mainPage.expectDownloadLeadInHidden();
@@ -142,7 +142,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await resetUserFreeDownloadQuota();
     });
 
-    test("[@Regression] OSDEV-2110: logged-in user within quota sees Download menu with CSV and Excel", async ({
+    test("[@regression] OSDEV-2110: logged-in user within quota sees Download menu with CSV and Excel", async ({
       page,
     }) => {
       const mainPage = await loginAndOpenFilteredSearch(page);
@@ -151,7 +151,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectDownloadMenuOptions();
     });
 
-    test("[@Regression] OSDEV-2104: over-quota user sees Purchase More Downloads with mismatch tooltip", async ({
+    test("[@regression] OSDEV-2104: over-quota user sees Purchase More Downloads with mismatch tooltip", async ({
       page,
     }) => {
       await setUserFreeDownloadQuota("100");
@@ -162,7 +162,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await mainPage.expectOverQuotaPurchaseTooltip(100);
     });
 
-    test("[@Regression] OSDEV-2104: exhausted quota user sees annual limit reached tooltip", async ({
+    test("[@regression] OSDEV-2104: exhausted quota user sees annual limit reached tooltip", async ({
       page,
     }) => {
       await setUserFreeDownloadQuota("0");
@@ -179,7 +179,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await setUserFreeDownloadQuota("100");
     });
 
-    test("[@Regression] OSDEV-2081: Purchase More Downloads triggers checkout session request", async ({
+    test("[@regression] OSDEV-2081: Purchase More Downloads triggers checkout session request", async ({
       page,
     }) => {
       const mainPage = await loginAndOpenFilteredSearch(page);
@@ -204,7 +204,7 @@ test.describe("[@Regression] Data download quotas and UI", () => {
       await resetUserFreeDownloadQuota();
     });
 
-    test("[@Regression] OSDEV-2070: logged-in user within quota triggers facilities-downloads API on CSV", async ({
+    test("[@regression] OSDEV-2070: logged-in user within quota triggers facilities-downloads API on CSV", async ({
       page,
     }) => {
       test.setTimeout(120000);
@@ -228,9 +228,9 @@ test.describe("[@Regression] Data download quotas and UI", () => {
   });
 });
 
-test.describe("[@Regression] OSDEV-2102 Embedded map download limits (testEM-upto10000)", () => {
+test.describe("[@regression] OSDEV-2102 Embedded map download limits (testEM-upto10000)", () => {
   test.describe("10k per-search cap (no annual quota UI)", () => {
-    test("[@Regression] OSDEV-2102 embedded map: anonymous user sees 10k download cap tooltip on Download hover", async ({
+    test("[@regression] OSDEV-2102 embedded map: anonymous user sees 10k download cap tooltip on Download hover", async ({
       page,
     }) => {
       const embeddedMap = await openEmbeddedMap(page);
@@ -240,7 +240,7 @@ test.describe("[@Regression] OSDEV-2102 Embedded map download limits (testEM-upt
       await embeddedMap.expectEmbedResultsLimitTooltip();
     });
 
-    test("[@Regression] OSDEV-2102 embedded map: anonymous user can open Download menu with CSV and Excel", async ({
+    test("[@regression] OSDEV-2102 embedded map: anonymous user can open Download menu with CSV and Excel", async ({
       page,
     }) => {
       const embeddedMap = await openEmbeddedMap(page);
@@ -249,7 +249,7 @@ test.describe("[@Regression] OSDEV-2102 Embedded map download limits (testEM-upt
       await embeddedMap.expectDownloadMenuOptions();
     });
 
-    test("[@Regression] OSDEV-2102 embedded map: logged-in user within 10k cap sees Download menu with CSV and Excel", async ({
+    test("[@regression] OSDEV-2102 embedded map: logged-in user within 10k cap sees Download menu with CSV and Excel", async ({
       page,
     }) => {
       const embeddedMap = await loginAndOpenEmbeddedMap(page);
@@ -261,7 +261,7 @@ test.describe("[@Regression] OSDEV-2102 Embedded map download limits (testEM-upt
   });
 });
 
-test.describe("[@Regression] OSDEV-1264 Private instance mode (10k cap, no annual quota UI)", () => {
+test.describe("[@regression] OSDEV-1264 Private instance mode (10k cap, no annual quota UI)", () => {
   test.beforeAll(async () => {
     await setPrivateInstanceMode(true);
   });
@@ -271,7 +271,7 @@ test.describe("[@Regression] OSDEV-1264 Private instance mode (10k cap, no annua
   });
 
   test.describe("Main site facilities search", () => {
-    test("[@Regression] OSDEV-1264 private instance: anonymous user sees request to Log in tooltip on Download hover", async ({
+    test("[@regression] OSDEV-1264 private instance: anonymous user sees request to Log in tooltip on Download hover", async ({
       page,
     }) => {
       const mainPage = await openFilteredSearchInPrivateInstance(page);
@@ -281,7 +281,7 @@ test.describe("[@Regression] OSDEV-1264 Private instance mode (10k cap, no annua
       await mainPage.expectAnonymousDownloadTooltip();
     });
 
-    test("[@Regression] OSDEV-1264 private instance: anonymous user can open Download menu with CSV and Excel", async ({
+    test("[@regression] OSDEV-1264 private instance: anonymous user can open Download menu with CSV and Excel", async ({
       page,
     }) => {
       const mainPage = await openFilteredSearchInPrivateInstance(page);
@@ -290,7 +290,7 @@ test.describe("[@Regression] OSDEV-1264 Private instance mode (10k cap, no annua
       await mainPage.expectDownloadMenuOptions();
     });
 
-    test("[@Regression] OSDEV-1264 private instance: logged-in user within 10k cap sees Download menu with CSV and Excel", async ({
+    test("[@regression] OSDEV-1264 private instance: logged-in user within 10k cap sees Download menu with CSV and Excel", async ({
       page,
     }) => {
       const mainPage = await loginAndOpenFilteredSearchInPrivateInstance(page);

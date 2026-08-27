@@ -31,9 +31,8 @@ export class DeleteFacilityPage extends BasePage {
 
   async confirmDelete() {
     const dialog = this.page.getByRole("dialog");
-    if (await dialog.isVisible().catch(() => false)) {
-      await dialog.getByRole("button", { name: /delete/i }).click();
-    }
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+    await dialog.getByRole("button", { name: /delete/i }).click();
   }
 
   async cancelDelete() {

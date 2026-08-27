@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { setup, skipIfMutatingNotAllowed } from "./utils/env";
 import { loginViaAuthPage } from "./utils/dashboard";
 import { ContributorListsPage } from "./pages/ContributorListsPage";
-import { fetchPendingFacilityLists } from "./utils/dashboardApi";
+import { FacilityListsApi } from "./utils/api";
 
 test.beforeAll(setup);
 
@@ -19,7 +19,7 @@ test.describe("[@regression] Contributor Lists approve/reject", () => {
     const listsPage = new ContributorListsPage(page, BASE_URL!);
     await listsPage.goToLists();
     await listsPage.expectListsPage();
-    const pendingLists = await fetchPendingFacilityLists(page, 50);
+    const pendingLists = await new FacilityListsApi(page).pending(50);
     const list =
       pendingLists.find(
         (item) => (item.item_count ?? item.facility_count ?? 0) > 0,
@@ -39,7 +39,7 @@ test.describe("[@regression] Contributor Lists approve/reject", () => {
     const listsPage = new ContributorListsPage(page, BASE_URL!);
     await listsPage.goToLists();
     await listsPage.expectListsPage();
-    const pendingLists = await fetchPendingFacilityLists(page, 50);
+    const pendingLists = await new FacilityListsApi(page).pending(50);
     const list =
       pendingLists.find(
         (item) => (item.item_count ?? item.facility_count ?? 0) > 0,

@@ -26,7 +26,6 @@ export class ModerationQueuePage extends BasePage {
   async goToModerationQueue() {
     await this.page.goto(`${this.baseUrl}/dashboard/moderation-queue`);
     await this.waitForLoadState("networkidle");
-    await this.page.waitForTimeout(1000);
   }
 
   async expectModerationQueuePage() {
@@ -43,26 +42,37 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async waitForModerationEventsResponse() {
-    try {
-      const response = await this.page.waitForResponse(
-        (resp) => resp.url().includes("/api/v1/moderation-events/"),
-        { timeout: 10000 },
-      );
-      expect(response.status()).toBe(200);
-    } catch {
-      // The moderation events request may have completed before waiting started.
+    const emptyMessage = this.page.getByText(
+      /no moderation events|no results|no data/i,
+    );
+    const firstRow = this.tableRows().first();
+
+    if (await firstRow.isVisible().catch(() => false)) {
+      return;
     }
 
-    const emptyMessage = this.page.getByText(/no moderation events|no results|no data/i);
-    const hasRows = await this.tableRows().first().isVisible().catch(() => false);
-    if (!hasRows) {
-      if (await emptyMessage.isVisible().catch(() => false)) {
-        return;
-      }
-      await expect(this.tableRows().first()).toBeVisible({ timeout: 30000 });
+    await Promise.race([
+      firstRow.waitFor({ state: "visible", timeout: 30000 }),
+      emptyMessage.waitFor({ state: "visible", timeout: 30000 }),
+    ]).catch(() => undefined);
+
+    if (await firstRow.isVisible().catch(() => false)) {
+      return;
     }
-    await this.page.waitForTimeout(1000);
-    await this.waitForLoadState("domcontentloaded");
+    if (await emptyMessage.isVisible().catch(() => false)) {
+      return;
+    }
+
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+  }
+
+  private waitForNextEventsGet() {
+    return this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/api/v1/moderation-events/") &&
+        resp.request().method() === "GET",
+      { timeout: 30000 },
+    );
   }
 
   private filterDropdown(filterLabel: string): Locator {
@@ -83,9 +93,10 @@ export class ModerationQueuePage extends BasePage {
       .locator(`label:has-text("${filterLabel}") + div div`)
       .filter({ hasText: value })
       .nth(1);
+    const eventsResponse = this.waitForNextEventsGet();
     await option.click();
     await this.page.keyboard.press("Enter");
-    await this.waitForLoadState("networkidle");
+    await eventsResponse.catch(() => undefined);
   }
 
   async clearFilterOption(filterLabel: string, value: string) {
@@ -135,8 +146,9 @@ export class ModerationQueuePage extends BasePage {
 
     const option = this.page.getByRole("option", { name: String(size) });
     await option.waitFor({ state: "visible" });
+    const eventsResponse = this.waitForNextEventsGet();
     await option.click();
-    await this.waitForModerationEventsResponse();
+    await eventsResponse.catch(() => undefined);
   }
 
   async getCurrentPageSize(): Promise<number> {
@@ -154,13 +166,15 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async setDateRange(afterDate: string, beforeDate: string) {
+    const beforeResponse = this.waitForNextEventsGet();
     await this.beforeDateInput().fill(beforeDate);
     await this.page.keyboard.press("Enter");
-    await this.waitForModerationEventsResponse();
+    await beforeResponse.catch(() => undefined);
 
+    const afterResponse = this.waitForNextEventsGet();
     await this.afterDateInput().fill(afterDate);
     await this.page.keyboard.press("Enter");
-    await this.waitForModerationEventsResponse();
+    await afterResponse.catch(() => undefined);
   }
 
   async clearDateFilters() {
@@ -172,8 +186,9 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async sortByColumn(columnLabel: string) {
+    const eventsResponse = this.waitForNextEventsGet();
     await this.page.getByRole("button", { name: `${columnLabel} sort` }).click();
-    await this.waitForModerationEventsResponse();
+    await eventsResponse.catch(() => undefined);
   }
 
   async getActiveSortColumn(): Promise<string | null> {
@@ -214,13 +229,27 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async openFirstContributionRecord() {
-    const firstRow = this.tableRows().first();
-    await expect(firstRow).toBeVisible();
-    await expect(firstRow).toBeEnabled();
+    return this.openContributionRecord(this.tableRows().first());
+  }
 
-    const pagePromise = this.page.context().waitForEvent("page");
-    await firstRow.click();
-    return pagePromise;
+  async openContributionRecord(row: Locator) {
+    await expect(row).toBeVisible();
+    await expect(row).toBeEnabled();
+
+    const pagePromise = this.page.context()
+      .waitForEvent("page", { timeout: 10000 })
+      .catch(() => null);
+    await row.click();
+    const popup = await pagePromise;
+    if (popup && !popup.isClosed()) {
+      await popup.waitForLoadState("domcontentloaded");
+      return popup;
+    }
+
+    await this.page.waitForURL(/\/dashboard\/moderation-queue\/[0-9a-f-]+/i, {
+      timeout: 15000,
+    });
+    return this.page;
   }
 
   async getCountryFilterOptions(): Promise<string[]> {
@@ -241,12 +270,11 @@ export class ModerationQueuePage extends BasePage {
     return labels;
   }
 
-  async waitForLocationInQueue(locationName: string, timeoutMs = 120000) {
+  async waitForLocationInQueue(locationName: string, timeoutMs = 60000) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
       await this.goToModerationQueue();
-      await this.waitForModerationEventsResponse();
       await this.chooseFilterOption("Moderation Status", "PENDING");
       await this.waitForModerationEventsResponse();
 
@@ -257,7 +285,7 @@ export class ModerationQueuePage extends BasePage {
         return;
       }
 
-      await this.page.waitForTimeout(5000);
+      await this.page.waitForTimeout(2000);
     }
 
     throw new Error(`Location "${locationName}" did not appear in moderation queue`);
@@ -272,9 +300,8 @@ export class ModerationQueuePage extends BasePage {
 
     while (Date.now() < deadline) {
       await this.goToModerationQueue();
-      await this.waitForModerationEventsResponse();
       await this.chooseFilterOption("Moderation Status", status);
-      await this.waitForModerationEventsResponse();
+      await this.setPageSize(100);
 
       const targetRow = this.findRowByLocationName(locationName);
       if (await targetRow.isVisible().catch(() => false)) {
@@ -287,7 +314,7 @@ export class ModerationQueuePage extends BasePage {
         }
       }
 
-      await this.page.waitForTimeout(5000);
+      await this.page.waitForTimeout(2000);
     }
 
     throw new Error(
@@ -314,8 +341,6 @@ export class ModerationQueuePage extends BasePage {
   }
 
   findRowByLocationName(locationName: string): Locator {
-    return this.page.getByRole("button", {
-      name: `View contribution record for ${locationName}`,
-    });
+    return this.page.locator("table tbody tr").filter({ hasText: locationName });
   }
 }

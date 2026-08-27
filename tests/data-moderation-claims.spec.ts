@@ -6,11 +6,9 @@ import { loginViaAuthPage } from "./utils/dashboard";
 import { FacilityClaimsPage } from "./pages/FacilityClaimsPage";
 import { DeleteFacilityPage } from "./pages/DeleteFacilityPage";
 import {
-  fetchPendingClaims,
-  fetchClaimsByStatus,
-  claimOsId,
-  fetchFacilityByOsId,
-} from "./utils/dashboardApi";
+  FacilityClaimsApi,
+  FacilitiesApi,
+} from "./utils/api";
 
 test.beforeAll(setup);
 
@@ -37,7 +35,7 @@ test.describe("[@regression] OSDEV-3203 / OSDEV-3204 Facility Claims filters and
       if (status === "PENDING") {
         const osId = await claimsPage.getFirstRowOsId();
         expect(osId, "First PENDING Facility Name link must include an OS ID").toBeTruthy();
-        const facilityResponse = await fetchFacilityByOsId(page, osId);
+        const facilityResponse = await new FacilitiesApi(page).getByOsId(osId);
         expect(facilityResponse.status()).toBe(200);
         const facility = await facilityResponse.json();
         pendingCountryCode = (
@@ -95,8 +93,6 @@ test.describe("[@regression] OSDEV-3203 / OSDEV-3204 Facility Claims filters and
 });
 
 test.describe.serial("[@regression] Facility Claims mutating flows", () => {
-  test.setTimeout(4 * 60 * 1000);
-
   let claimIdForNote = 0;
   let claimIdToApprove = 0;
   let claimIdToDeny = 0;
@@ -112,7 +108,7 @@ test.describe.serial("[@regression] Facility Claims mutating flows", () => {
   }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const pending = await fetchPendingClaims(page, 10);
+    const pending = await new FacilityClaimsApi(page).pending(10);
     test.skip(pending.length < 1, "No PENDING claims available");
     claimIdForNote = pending[0].id;
 
@@ -126,11 +122,11 @@ test.describe.serial("[@regression] Facility Claims mutating flows", () => {
   test("[@regression] OSDEV-1288: Approve a Facility Claim", async ({ page }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const pending = await fetchPendingClaims(page, 20);
+    const pending = await new FacilityClaimsApi(page).pending(20);
     test.skip(pending.length < 1, "No PENDING claims available");
     const claim = pending.find((c) => c.id !== claimIdForNote) ?? pending[0];
     claimIdToApprove = claim.id;
-    approvedOsId = claimOsId(claim) || "";
+    approvedOsId = FacilityClaimsApi.osId(claim) || "";
 
     const claimsPage = new FacilityClaimsPage(page, BASE_URL!);
     await claimsPage.openClaimById(claimIdToApprove);
@@ -174,10 +170,10 @@ test.describe.serial("[@regression] Facility Claims mutating flows", () => {
   test("[@regression] OSDEV-1289: Deny a Facility Claim", async ({ page }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const pending = await fetchPendingClaims(page, 20);
+    const pending = await new FacilityClaimsApi(page).pending(20);
     test.skip(pending.length < 1, "No PENDING claims available");
     claimIdToDeny = pending[0].id;
-    const osId = claimOsId(pending[0]) || "";
+    const osId = FacilityClaimsApi.osId(pending[0]) || "";
 
     const claimsPage = new FacilityClaimsPage(page, BASE_URL!);
     await claimsPage.openClaimById(claimIdToDeny);
@@ -208,15 +204,16 @@ test.describe("[@regression] OSDEV-1292 Delete blocked for approved claim", () =
   }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const approved = await fetchClaimsByStatus(page, "APPROVED", 50);
+    const approved = await new FacilityClaimsApi(page).byStatus("APPROVED", 50);
     test.skip(approved.length < 1, "No APPROVED claims available");
-    const resolvedOsId = claimOsId(approved[0]);
+    const resolvedOsId = FacilityClaimsApi.osId(approved[0]);
     test.skip(!resolvedOsId, "Approved claim missing OS ID");
 
     const deletePage = new DeleteFacilityPage(page, BASE_URL!);
     await deletePage.goToDeleteFacility();
     await deletePage.searchOsId(resolvedOsId!);
     await deletePage.clickDeleteFacility();
+    await deletePage.confirmDelete();
     await deletePage.expectApprovedClaimBlockMessage();
   });
 });

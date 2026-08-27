@@ -10,8 +10,6 @@ test.describe("[@regression] Admin Sources list ownership / active toggle", () =
     skipIfMutatingNotAllowed(test);
   });
 
-  test.setTimeout(3 * 60 * 1000);
-
   async function openListSource(page: import("@playwright/test").Page) {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     const loginPage = new LoginPage(page, BASE_URL!);

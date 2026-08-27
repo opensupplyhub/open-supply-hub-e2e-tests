@@ -19,6 +19,26 @@ export class ContributionRecordPage extends BasePage {
     await expect(heading).toBeVisible({ timeout: 30000 });
   }
 
+  moderationIdFromUrl(): string {
+    const match = this.page.url().match(
+      /\/dashboard\/moderation-queue\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+    );
+    return match?.[1] ?? "";
+  }
+
+  async getFirstPotentialMatchOsId(): Promise<string> {
+    await this.expectPotentialMatchesSection();
+    const link = this.page
+      .locator('a[href*="/production-locations/"], a[href*="/facilities/"]')
+      .first();
+    await link.waitFor({ state: "visible", timeout: 15000 }).catch(() => undefined);
+    const href = (await link.getAttribute("href").catch(() => "")) || "";
+    const fromHref = href.match(
+      /\/(?:production-locations|facilities)\/([A-Z]{2}[A-Z0-9]{13})/i,
+    );
+    return fromHref?.[1] ?? "";
+  }
+
   async createNewLocation() {
     const responsePromise = this.page.waitForResponse(
       (resp) =>

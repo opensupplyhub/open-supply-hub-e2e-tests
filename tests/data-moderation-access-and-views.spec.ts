@@ -15,9 +15,9 @@ import {
   OSDEV_1303_EXPECTED,
 } from "./pages/GeocoderPage";
 import {
-  fetchProductionLocations,
-  fetchFacilityByOsId,
-} from "./utils/dashboardApi";
+  FacilitiesApi,
+  ProductionLocationsApi,
+} from "./utils/api";
 
 test.beforeAll(setup);
 
@@ -142,7 +142,7 @@ test.describe("[@regression] OSDEV-3207 Cancel delete (read-safe path)", () => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
-    const locations = await fetchProductionLocations(page, "IS", 2);
+    const locations = await new ProductionLocationsApi(page).byCountry("IS", 2);
     test.skip(locations.length < 1, "No Iceland production locations available");
     const osId = locations[0].os_id;
 
@@ -154,7 +154,7 @@ test.describe("[@regression] OSDEV-3207 Cancel delete (read-safe path)", () => {
     await expect(page.getByRole("button", { name: /^cancel$/i })).toBeVisible();
     await deletePage.cancelDelete();
 
-    const facilityResponse = await fetchFacilityByOsId(page, osId);
+    const facilityResponse = await new FacilitiesApi(page).getByOsId(osId);
     expect(facilityResponse.status()).toBe(200);
   });
 });

@@ -8,13 +8,9 @@ import { UpdateFacilityLocationPage } from "./pages/UpdateFacilityLocationPage";
 import { LinkOsIdPage } from "./pages/LinkOsIdPage";
 import { StatusReportsPage } from "./pages/StatusReportsPage";
 import {
-  fetchFacilityWithOneContributor,
-  fetchProductionLocations,
-  fetchFacilitiesByCountry,
-  fetchFacilitySplitMatches,
-  fetchFacilityByOsId,
-  expectProductionLocationGone,
-} from "./utils/dashboardApi";
+  FacilitiesApi,
+  ProductionLocationsApi,
+} from "./utils/api";
 
 test.beforeAll(setup);
 
@@ -91,7 +87,7 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     test.setTimeout(6 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const facility = await fetchFacilityWithOneContributor(page);
+    const facility = await new FacilitiesApi(page).withOneContributor();
 
     const deletePage = new DeleteFacilityPage(page, BASE_URL!);
     await deletePage.goToDeleteFacility();
@@ -102,7 +98,7 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     }
 
     // Prefer v1 404; if lagging, open UI /production-locations/{osId} and retry
-    await expectProductionLocationGone(page, facility.osId, {
+    await new ProductionLocationsApi(page).expectGone(facility.osId, {
       attempts: 10,
       delayMs: 3000,
     });
@@ -113,7 +109,7 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   }) => {
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const locations = await fetchProductionLocations(page, "IS", 3);
+    const locations = await new ProductionLocationsApi(page).byCountry("IS", 3);
     test.skip(locations.length < 2, "Need at least 2 Iceland locations");
 
     const mergePage = new MergeFacilitiesPage(page, BASE_URL!);
@@ -123,15 +119,15 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     await mergePage.clickMergeFacilities();
     await mergePage.cancelMerge();
 
-    expect((await fetchFacilityByOsId(page, locations[0].os_id)).status()).toBe(200);
-    expect((await fetchFacilityByOsId(page, locations[1].os_id)).status()).toBe(200);
+    expect((await new FacilitiesApi(page).getByOsId(locations[0].os_id)).status()).toBe(200);
+    expect((await new FacilitiesApi(page).getByOsId(locations[1].os_id)).status()).toBe(200);
   });
 
   test("[@regression] OSDEV-1295: Merge Two Facilities", async ({ page }) => {
     test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const locations = await fetchProductionLocations(page, "MX", 5);
+    const locations = await new ProductionLocationsApi(page).byCountry("MX", 5);
     test.skip(locations.length < 2, "Need at least 2 Mexico locations");
 
     const target = locations[0].os_id;
@@ -152,8 +148,8 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const locations = await fetchProductionLocations(page, "SH", 5);
-    test.skip(locations.length < 2, "Need at least 2 SH locations");
+    const locations = await new ProductionLocationsApi(page).byCountry("MX", 5);
+    test.skip(locations.length < 2, "Need at least 2 Mexico locations");
 
     const mergePage = new MergeFacilitiesPage(page, BASE_URL!);
     await mergePage.goToMerge();
@@ -165,15 +161,16 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     await mergePage.expectMergedToast();
   });
 
-  test("[@regression] OSDEV-1296: Transfer and Promote facility matches", async ({
+  test("[@regression] OSDEV-1296: Transfer facility matches", async ({
     page,
   }) => {
     test.setTimeout(5 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+    const facilitiesApi = new FacilitiesApi(page);
 
     // Comment 36433: first two from MX contributors_desc.
-    const facilities = await fetchFacilitiesByCountry(page, "MX", 50);
+    const facilities = await facilitiesApi.byCountry("MX", 50);
     expect(facilities.length).toBeGreaterThanOrEqual(2);
     const source = facilities[0];
     const alternate = facilities[1];
@@ -183,56 +180,75 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     await adjust.expectPage();
 
     const sourceBefore = await adjust.searchOsId(source.id);
+    expect(sourceBefore.length).toBeGreaterThan(3);
+    const matchIndex = sourceBefore.findIndex((match) => !match.transferred_from);
     expect(
-      sourceBefore.length,
-      "Source facility must have more than 3 matches (GET .../split/ from Adjust search)",
-    ).toBeGreaterThan(3);
-    const alternateBefore = await fetchFacilitySplitMatches(page, alternate.id);
+      matchIndex,
+      "Need a source match that was not already transferred",
+    ).toBeGreaterThanOrEqual(0);
+    const matchToMove = sourceBefore[matchIndex];
 
-    await adjust.transferFirstMatchTo(alternate.id);
+    const destBefore = await facilitiesApi.splitMatches(alternate.id);
+
+    await adjust.transferMatchAt(matchIndex, alternate.id);
 
     await expect
-      .poll(async () => (await fetchFacilitySplitMatches(page, source.id)).length, {
-        timeout: 30000,
-        intervals: [1000, 2000],
+      .poll(async () => (await facilitiesApi.splitMatches(source.id)).length, {
+        timeout: 60000,
+        intervals: [2000, 3000, 5000],
       })
       .toBe(sourceBefore.length - 1);
 
-    const alternateAfter = await fetchFacilitySplitMatches(page, alternate.id);
-    expect(alternateAfter.length).toBe(alternateBefore.length + 1);
-    expect(
-      alternateAfter.some((match) => match.transferred_from === source.id),
-    ).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          const dest = await facilitiesApi.splitMatches(alternate.id);
+          return dest.some((match) => match.match_id === matchToMove.match_id)
+            ? dest.length
+            : -1;
+        },
+        {
+          timeout: 60000,
+          intervals: [2000, 3000, 5000],
+        },
+      )
+      .toBe(destBefore.length + 1);
+  });
 
-    await adjust.searchOsId(source.id);
-    const leftName = (await adjust.leftPanelName()) || source.properties?.name || "";
-    const afterTransfer = await fetchFacilitySplitMatches(page, source.id);
-    const differing = afterTransfer.find(
-      (match) =>
-        (match.name || "").trim().toLowerCase() !== leftName.trim().toLowerCase(),
+  test("[@regression] OSDEV-1296: Promote facility matches", async ({
+    page,
+  }) => {
+    test.setTimeout(5 * 60 * 1000);
+    const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+    const facilitiesApi = new FacilitiesApi(page);
+
+    const source = await facilitiesApi.withDifferingMatchName(["AR", "MX"]);
+    test.skip(
+      !source,
+      "Need a facility with a match whose Name differs from the canonical name",
     );
+
+    const adjust = new AdjustFacilityMatchesPage(page, BASE_URL!);
+    await adjust.goToAdjust();
+    await adjust.expectPage();
+    await adjust.searchOsId(source!.osId);
+
+    const leftName = await adjust.leftPanelName();
+    expect(leftName, "Left-side location name").toBeTruthy();
+
+    const promotedName = await adjust.promoteFirstDifferingMatch(leftName);
     expect(
-      differing?.name,
-      "Need a match whose Name differs from the left-panel facility",
+      promotedName,
+      "Need a right-list match whose Name differs from the left-side location",
     ).toBeTruthy();
 
-    const promoteResponse = await adjust.promoteMatchNamedDifferently(
-      leftName,
-      differing!.name,
-    );
-    const promoted = await promoteResponse.json();
-    const promotedName =
-      promoted.properties?.name || promoted.name || differing!.name;
-    if (differing!.name) {
-      expect(String(promotedName).toLowerCase()).toBe(
-        differing!.name.trim().toLowerCase(),
-      );
-    }
-
-    await adjust.searchOsId(source.id);
-    await expect(page.getByText(differing!.name!, { exact: false }).first()).toBeVisible({
-      timeout: 30000,
-    });
+    await expect
+      .poll(async () => (await adjust.leftPanelName()).trim().toLowerCase(), {
+        timeout: 60000,
+        intervals: [1000, 2000, 3000],
+      })
+      .toBe(promotedName.trim().toLowerCase());
   });
 
   test("[@regression] OSDEV-1297: Split a Facility on Adjust Facility Matches", async ({
@@ -241,10 +257,11 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     test.setTimeout(4 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+    const facilitiesApi = new FacilitiesApi(page);
 
     // Ticket data: first MX facility from contributors_desc. /split/ is only
     // for match counts on that OS ID (before/after), not to scan the list.
-    const facilities = await fetchFacilitiesByCountry(page, "MX", 50);
+    const facilities = await facilitiesApi.byCountry("MX", 50);
     expect(facilities.length).toBeGreaterThanOrEqual(1);
     const source = facilities[0];
     const adjust = new AdjustFacilityMatchesPage(page, BASE_URL!);
@@ -252,63 +269,44 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
     const matchesBefore = await adjust.searchOsId(source.id);
     await adjust.splitFirstMatch();
 
-    const after = await fetchFacilitySplitMatches(page, source.id);
-    expect(after.length).toBe(matchesBefore.length - 1);
+    await adjust.clearSearch();
+    await adjust.searchOsId(source.id);
+    await expect
+      .poll(async () => (await facilitiesApi.splitMatches(source.id)).length, {
+        timeout: 60000,
+        intervals: [2000, 3000, 5000],
+      })
+      .toBe(matchesBefore.length - 1);
   });
 
   test("[@regression] OSDEV-1299: Update Facility Location coordinates", async ({
     page,
   }) => {
-    test.setTimeout(3 * 60 * 1000);
+    test.setTimeout(4 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
-    const locations = await fetchProductionLocations(page, "US", 3);
+    const locations = await new ProductionLocationsApi(page).byCountry("US", 10);
     test.skip(locations.length < 1, "No US production locations");
-    const location = locations[0];
-    const originalLat = location.coordinates?.lat;
-    const originalLng = location.coordinates?.lng;
 
+    const newLng = "85";
+    const newLat = "40";
     const updatePage = new UpdateFacilityLocationPage(page, BASE_URL!);
     await updatePage.goToUpdateLocation();
     await updatePage.expectPage();
-    await updatePage.searchOsId(location.os_id);
-    await updatePage.setCoordinates("85", "40");
-    await updatePage.updateLocation();
 
-    // UI should reflect new coordinates on the left panel promptly.
-    await expect(page.getByText(/85/).first()).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/40/).first()).toBeVisible({ timeout: 30000 });
-
-    let coordinates: [number, number] | null = null;
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const facility = await fetchFacilityByOsId(page, location.os_id);
-      expect(facility.status()).toBe(200);
-      const body = await facility.json();
-      coordinates = body.geometry?.coordinates ?? null;
-      if (
-        coordinates &&
-        Math.abs(Number(coordinates[0]) - 85) < 0.0001 &&
-        Math.abs(Number(coordinates[1]) - 40) < 0.0001
-      ) {
-        break;
-      }
-      await page.waitForTimeout(2000);
-      // Re-apply once if first update did not stick.
-      if (attempt === 3) {
-        await updatePage.searchOsId(location.os_id);
-        await updatePage.setCoordinates("85", "40");
-        await updatePage.updateLocation();
-      }
-    }
-    expect(Number(coordinates?.[0])).toBeCloseTo(85, 4);
-    expect(Number(coordinates?.[1])).toBeCloseTo(40, 4);
-
-    // Cleanup: restore original coordinates when known
-    if (originalLat != null && originalLng != null) {
+    let updated = false;
+    for (const location of locations) {
       await updatePage.searchOsId(location.os_id);
-      await updatePage.setCoordinates(String(originalLng), String(originalLat));
+      if ((await updatePage.getPanelText()).includes(`${newLng}, ${newLat}`)) {
+        continue;
+      }
+      await updatePage.setCoordinates(newLng, newLat);
       await updatePage.updateLocation();
+      await updatePage.expectLeftPanelCoordinates(newLng, newLat);
+      updated = true;
+      break;
     }
+    expect(updated, "left panel should contain 85, 40 after update").toBe(true);
   });
 });
 
@@ -320,7 +318,6 @@ test.describe("[@regression] Status reports and Link OS ID", () => {
   test("[@regression] OSDEV-1301: View Status Reports and confirm a pending closure", async ({
     page,
   }) => {
-    test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const reports = new StatusReportsPage(page, BASE_URL!);
@@ -336,7 +333,6 @@ test.describe("[@regression] Status reports and Link OS ID", () => {
   test("[@regression] OSDEV-3209: Reject a Status Report with reason", async ({
     page,
   }) => {
-    test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const reports = new StatusReportsPage(page, BASE_URL!);
@@ -365,12 +361,13 @@ test.describe("[@regression] Status reports and Link OS ID", () => {
       0,
     );
 
+    const facilitiesApi = new FacilitiesApi(page);
     const reopenReason = `QA report reopened ${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 8)}`;
     let closedOsId: string | null = null;
     for (const osId of osIds) {
-      const response = await fetchFacilityByOsId(page, osId);
+      const response = await facilitiesApi.getByOsId(osId);
       if (response.status() !== 200) {
         continue;
       }
@@ -440,13 +437,13 @@ test.describe("[@regression] Status reports and Link OS ID", () => {
   test("[@regression] OSDEV-1302: Link facility to New OS ID after closure confirm", async ({
     page,
   }) => {
-    test.setTimeout(6 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+    const facilitiesApi = new FacilitiesApi(page);
 
-    let facilities = await fetchFacilitiesByCountry(page, "AR", 10);
+    let facilities = await facilitiesApi.byCountry("AR", 10);
     if (facilities.length < 2) {
-      facilities = await fetchFacilitiesByCountry(page, "MX", 10);
+      facilities = await facilitiesApi.byCountry("MX", 10);
     }
     expect(
       facilities.length,

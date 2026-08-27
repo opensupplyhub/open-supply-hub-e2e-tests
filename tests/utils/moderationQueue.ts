@@ -1,8 +1,8 @@
 import { Page } from "@playwright/test";
 import { ModerationQueuePage } from "../pages/ModerationQueuePage";
 
-export function uniqueSlcLocationName(prefix = "E2E SLC"): string {
-  return `${prefix} ${Date.now()}`;
+export function uniqueSlcLocationName(prefix = "Yiwu Pacific Knitwear"): string {
+  return `${prefix} ${Date.now().toString(36)}`;
 }
 
 export async function loginAdminToModerationQueue(
@@ -23,28 +23,32 @@ export async function loginAdminToModerationQueue(
   const moderationHeading = page.getByRole("heading", {
     name: "Dashboard / Moderation Queue",
   });
+  const signInLink = page.getByRole("link", {
+    name: "Sign in to view your Open Supply Hub Dashboard",
+  });
+  const myAccountButton = page.getByRole("button", { name: "My Account" });
+
+  await moderationHeading
+    .or(signInLink)
+    .or(myAccountButton)
+    .waitFor({ state: "visible", timeout: 15000 });
+
   if (await moderationHeading.isVisible().catch(() => false)) {
     return moderationQueuePage;
   }
 
-  const signInLink = page.getByRole("link", {
-    name: "Sign in to view your Open Supply Hub Dashboard",
-  });
-
-  if (!(await signInLink.isVisible().catch(() => false))) {
-    const myAccountButton = page.getByRole("button", { name: "My Account" });
-    if (await myAccountButton.isVisible().catch(() => false)) {
-      await page.context().clearCookies();
-      await moderationQueuePage.goToModerationQueue();
-      await page.waitForLoadState("networkidle");
-    }
+  if (await myAccountButton.isVisible().catch(() => false)) {
+    await page.context().clearCookies();
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await moderationQueuePage.goToModerationQueue();
+    await page.waitForLoadState("networkidle");
   }
 
-  const signInToDashboard = page.getByRole("link", {
-    name: "Sign in to view your Open Supply Hub Dashboard",
-  });
-  await signInToDashboard.waitFor({ state: "visible", timeout: 15000 });
-  await signInToDashboard.click();
+  await signInLink.waitFor({ state: "visible", timeout: 15000 });
+  await signInLink.click();
   await page.getByRole("heading", { name: "Log In" }).waitFor({ state: "visible" });
 
   await page.getByLabel("Email").fill(adminEmail);
