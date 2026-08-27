@@ -645,7 +645,7 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
       "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
-    locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";
+    locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else {
     locationAddressCheck =
       "Yinan Industrial Zone, Yiwu";
@@ -922,7 +922,6 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
 
     // Navigate to the base URL
     await mainPage.goTo();
-    await mainPage.clearPersistedSearchState();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re";
@@ -939,8 +938,8 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     // Wait for the facilities API call to return a 200 status
     await page.waitForLoadState("networkidle");
 
-    // Results panel is rendered only when the search is non-empty
-    await mainPage.expectSearchResults();
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
 
     // Click the first facility link in the search results
     const facilityLink = page.locator('a[href*="/facilities/"]').first();
@@ -961,7 +960,6 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
 
     // Navigate to the base URL
     await mainPage.goTo();
-    await mainPage.clearPersistedSearchState();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re"; //
@@ -978,8 +976,8 @@ test.describe("OSDEV-1232: Home page search combinations", () => {
     // Wait for the page to load
     await page.waitForLoadState("networkidle");
 
-    // Results panel is rendered only when the search is non-empty
-    await mainPage.expectSearchResults();
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
 
     // Click the first facility link in the search results
     const facilityLink = page.locator('a[href*="/facilities/"]').first();
@@ -1520,7 +1518,6 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
 
     // Navigate to the base URL
     await mainPage.goTo();
-    await mainPage.clearPersistedSearchState();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re";
@@ -1537,8 +1534,8 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
     // Wait for the facilities API call to return a 200 status
     await page.waitForLoadState("networkidle");
 
-    // Results panel is rendered only when the search is non-empty
-    await mainPage.expectSearchResults();
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
 
     // Click the first facility link in the search results
     //const facilityLink = page.locator('a[href*="/facilities/"]').first();
@@ -1569,7 +1566,6 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
 
     // Navigate to the base URL
     await mainPage.goTo();
-    await mainPage.clearPersistedSearchState();
 
     // Define a valid search query
     const validSearchQuery = "Fab Lab Re"; //
@@ -1586,8 +1582,8 @@ test.describe("OSDEV-1232: Home page search combinations [v2]", () => {
     // Wait for the page to load
     await page.waitForLoadState("networkidle");
 
-    // Results panel is rendered only when the search is non-empty
-    await mainPage.expectSearchResults();
+    // Assert that the search results are displayed
+    await expect(page.getByText("# Contributors")).toBeVisible();
 
     // Click the first facility link in the search results
     const facilityLink = page

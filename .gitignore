@@ -11,3 +11,6 @@ node_modules/
 
 # Local QA session logs
 .cursor/sessions/
+
+# macOS
+.DS_Store

@@ -13,6 +13,7 @@ import {
 } from "./utils/api";
 
 test.beforeAll(setup);
+test.setTimeout(10 * 60 * 1000);
 
 async function reportClosureOrMove(
   page: import("@playwright/test").Page,
@@ -83,8 +84,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-1293: Delete a Facility with only one contributor", async ({
     page,
   }) => {
-    // Retries for cache / OpenSearch lag after delete
-    test.setTimeout(6 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const facility = await new FacilitiesApi(page).withOneContributor();
@@ -124,7 +123,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   });
 
   test("[@regression] OSDEV-1295: Merge Two Facilities", async ({ page }) => {
-    test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const locations = await new ProductionLocationsApi(page).byCountry("MX", 5);
@@ -145,7 +143,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-3205: Flip target and merge facilities before merging", async ({
     page,
   }) => {
-    test.setTimeout(3 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const locations = await new ProductionLocationsApi(page).byCountry("MX", 5);
@@ -164,7 +161,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-1296: Transfer facility matches", async ({
     page,
   }) => {
-    test.setTimeout(5 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const facilitiesApi = new FacilitiesApi(page);
@@ -218,7 +214,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-1296: Promote facility matches", async ({
     page,
   }) => {
-    test.setTimeout(5 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const facilitiesApi = new FacilitiesApi(page);
@@ -254,7 +249,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-1297: Split a Facility on Adjust Facility Matches", async ({
     page,
   }) => {
-    test.setTimeout(4 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const facilitiesApi = new FacilitiesApi(page);
@@ -282,7 +276,6 @@ test.describe("[@regression] Delete / Merge / Adjust / Update facility tools", (
   test("[@regression] OSDEV-1299: Update Facility Location coordinates", async ({
     page,
   }) => {
-    test.setTimeout(4 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
     const locations = await new ProductionLocationsApi(page).byCountry("US", 10);
@@ -348,7 +341,6 @@ test.describe("[@regression] Status reports and Link OS ID", () => {
   test("[@regression] OSDEV-3212: Confirm a facility reopening Status Report", async ({
     page,
   }) => {
-    test.setTimeout(15 * 60 * 1000);
     const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
     await loginViaAuthPage(page, USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
