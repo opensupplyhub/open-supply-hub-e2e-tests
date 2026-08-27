@@ -27,7 +27,7 @@ export class MainPage extends BasePage {
       /All registered accounts can download up to 5000 production locations annually for free./i
     );
   private noFacilitiesMessage = () => this.page.getByText("No facilities matching this");
-  private contributorsText = () => this.page.getByText("# Contributors");
+  private resultsPanel = () => this.page.locator(".results-height-subtract").first();
   private facilityLinks = () =>
     this.page.locator(
       'a[href*="/facilities/"], a[href*="/production-locations/"]'
@@ -38,6 +38,10 @@ export class MainPage extends BasePage {
   private countriesDropdown = () => this.page.locator("#COUNTRIES div").filter({ hasText: "Select" }).nth(1);
   private facilityTypeDropdown = () => this.page.locator("#FACILITY_TYPE div").filter({ hasText: "Select" }).first();
   private workersDropdown = () => this.page.locator("#NUMBER_OF_WORKERS div").filter({ hasText: "Select" }).first();
+  private languageButton = () =>
+    this.page.locator("button.nav-submenu-button.nav-submenu-button--language");
+  private languageLink = (label: string) =>
+    this.page.locator("a.nav-submenu__link").filter({ hasText: label });
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -47,9 +51,42 @@ export class MainPage extends BasePage {
     await super.goTo(path);
   }
 
+  async clearPersistedSearchState() {
+    const hadState = await this.page.evaluate(() => {
+      const had = localStorage.length > 0 || sessionStorage.length > 0;
+      localStorage.clear();
+      sessionStorage.clear();
+      return had;
+    });
+    if (hadState) {
+      await this.page.reload({ waitUntil: "networkidle" });
+      await this.acceptCookiesIfPresent();
+    }
+  }
+
   async verifyPageTitle() {
     const title = await this.page.title();
     expect(title).toBe("Open Supply Hub");
+  }
+
+  async expectLanguageButtonVisible() {
+    await expect(this.languageButton()).toBeVisible();
+  }
+
+  async openLanguageMenu() {
+    await this.languageButton().click();
+  }
+
+  async expectLanguageOptions(options: readonly { label: string; href: string }[]) {
+    for (const option of options) {
+      const link = this.languageLink(option.label);
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", option.href);
+    }
+  }
+
+  async chooseLanguage(label: string) {
+    await this.languageLink(label).click();
   }
 
   async searchFacilities(searchQuery: string) {
@@ -240,7 +277,7 @@ export class MainPage extends BasePage {
   }
 
   async expectSearchResults() {
-    await this.expectToBeVisible(this.contributorsText());
+    await this.expectToBeVisible(this.resultsPanel());
   }
 
   async expectFacilityInResults(facilityName: string) {

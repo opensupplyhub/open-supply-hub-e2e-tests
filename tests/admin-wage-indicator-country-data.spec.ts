@@ -118,7 +118,7 @@ async function loginAndOpenWageIndicatorList(page: Page, baseUrl: string): Promi
 
 
 test.describe("[@regression] Admin: Wage Indicator Country Data", () => {
-  test("Wage column links (Living wage link national, Minimum wage link english, Minimum wage link national) return HTTP 200", async ({
+  test("[@regression] Wage column links (Living wage link national, Minimum wage link english, Minimum wage link national) return HTTP 200", async ({
     page,
   }) => {
     const { BASE_URL } = process.env;

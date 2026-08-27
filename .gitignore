@@ -8,3 +8,9 @@ node_modules/
 .env
 /tests/downloads/
 /tests/screenshots/
+
+# Local QA session logs
+.cursor/sessions/
+
+# macOS
+.DS_Store

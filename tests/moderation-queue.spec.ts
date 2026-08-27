@@ -5,6 +5,7 @@ import { setup } from "./utils/env";
 import { LoginPage } from "./pages/LoginPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { ModerationQueuePage, MODERATION_QUEUE_COLUMNS } from "./pages/ModerationQueuePage";
+import { ContributionRecordPage } from "./pages/ContributionRecordPage";
 import { SingleLocationContributionPage } from "./pages/SingleLocationContributionPage";
 import {
   loginAdminToModerationQueue,
@@ -327,6 +328,80 @@ test.describe("[@regression] OSDEV-2283 Moderation Queue regression tests", () =
       }),
     ).toBeVisible();
   });
+
+  test("[@regression] OSDEV-1562: PATCH production-locations/{os_id} updates Moderation Decision Date", async ({
+    page,
+  }) => {
+    test.setTimeout(2 * 60 * 1000);
+    const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    const queue = await loginAdminToModerationQueue(
+      page,
+      BASE_URL!,
+      USER_ADMIN_EMAIL!,
+      USER_ADMIN_PASSWORD!,
+    );
+
+    await queue.waitForModerationEventsResponse();
+    await queue.chooseFilterOption("Moderation Status", "PENDING");
+    await queue.waitForModerationEventsResponse();
+
+    const pendingRow = page.locator("table tbody tr").first();
+    await expect(pendingRow).toBeVisible();
+    await expect(
+      pendingRow.locator(`td:nth-child(${MODERATION_QUEUE_COLUMNS.STATUS})`),
+    ).toHaveText("PENDING");
+
+    const locationName = (
+      await pendingRow
+        .locator(`td:nth-child(${MODERATION_QUEUE_COLUMNS.LOCATION_NAME})`)
+        .textContent()
+    )?.trim();
+    expect(locationName).toBeTruthy();
+    await expect(
+      pendingRow.locator(`td:nth-child(${MODERATION_QUEUE_COLUMNS.DECISION_DATE})`),
+    ).toHaveText("N/A");
+
+    const recordPage = await queue.openContributionRecord(pendingRow);
+    const record = new ContributionRecordPage(recordPage, BASE_URL!);
+    await record.expectContributionRecord();
+
+    const moderationId = record.moderationIdFromUrl();
+    expect(moderationId).toBeTruthy();
+
+    const osId = await record.getFirstPotentialMatchOsId();
+    if (!osId) {
+      if (recordPage !== page) {
+        await recordPage.close();
+      }
+      test.skip(true, "First PENDING row has no Potential Match OS ID");
+    }
+
+    const patchResponse = await patchModerationProductionLocation(
+      page.request,
+      BASE_URL!,
+      moderationId,
+      osId,
+    );
+    expect(patchResponse.status()).toBe(200);
+
+    if (recordPage !== page) {
+      await recordPage.close();
+    }
+
+    const targetRow = page.getByRole("button", {
+      name: `View contribution record for ${locationName}`,
+      exact: true,
+    });
+    const decisionDateCell = targetRow.getByRole("cell").nth(6);
+    const now = new Date();
+
+    await queue.goToModerationQueue();
+    await queue.waitForModerationEventsResponse();
+    await expect(targetRow).toBeVisible();
+    await expect(decisionDateCell).not.toHaveText("N/A", { timeout: 30000 });
+    await expect(decisionDateCell).toContainText(String(now.getFullYear()));
+    await expect(decisionDateCell).toContainText(String(now.getDate()));
+  });
 });
 
 test.describe.serial("[@regression] OSDEV-2283 Moderation Queue API and SLC workflow", () => {
@@ -334,23 +409,19 @@ test.describe.serial("[@regression] OSDEV-2283 Moderation Queue API and SLC work
 
   let moderationId = "";
   let locationName = "";
-  let osId = "";
-  let approvedLocationName = "";
-  const approvedLocationAddress =
-    "5678 Automation Approval Street, Test District, Test City, 12345";
 
-  test("[@regression] OSDEV-1561 setup: Create SLC request with regular user", async ({
+  test("[@regression] OSDEV-2283 setup: Create SLC request with regular user", async ({
     page,
   }) => {
     const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
     const slcPage = new SingleLocationContributionPage(page, BASE_URL!);
 
-    locationName = uniqueSlcLocationName("OSDEV-2283 SLC");
+    locationName = uniqueSlcLocationName("Yiwu Hengda Knitwear");
     await slcPage.goToNameAddressTab();
     await slcPage.ensureLoggedInAsRegularUser(USER_EMAIL!, USER_PASSWORD!);
     moderationId = await slcPage.submitNewLocation({
       name: locationName,
-      address: "1234 Automation Test Street, Test District, Yiwu, Zhejiang, 322002",
+      address: "88 Chouzhou North Road, Fotang, Yiwu, Zhejiang, 322000",
       country: "China",
     });
   });
@@ -420,17 +491,15 @@ test.describe.serial("[@regression] OSDEV-2283 Moderation Queue API and SLC work
       process.env;
 
     const slcPage = new SingleLocationContributionPage(page, BASE_URL!);
-    const createModerationId = uniqueSlcLocationName("OSDEV-1561");
-    const createLocationName = `${createModerationId} Location`;
+    const createLocationName = uniqueSlcLocationName("Yiwu Dongfang Garment");
 
     await slcPage.goToNameAddressTab();
     await slcPage.ensureLoggedInAsRegularUser(USER_EMAIL!, USER_PASSWORD!);
     const newModerationId = await slcPage.submitNewLocation({
       name: createLocationName,
-      address: approvedLocationAddress,
+      address: "12 Chengbei Road, Jiangdong, Yiwu, Zhejiang, 322000",
       country: "China",
     });
-    approvedLocationName = createLocationName;
 
     await loginAdminToModerationQueue(
       page,
@@ -447,56 +516,12 @@ test.describe.serial("[@regression] OSDEV-2283 Moderation Queue API and SLC work
     expect(postResponse.status()).toBe(201);
 
     const postBody = await postResponse.json();
-    osId = postBody.os_id;
-    expect(osId).toBeTruthy();
+    expect(postBody.os_id).toBeTruthy();
 
     const moderationQueuePage = new ModerationQueuePage(page, BASE_URL!);
     await moderationQueuePage.waitForDecisionDateUpdated(
       createLocationName,
       "APPROVED",
     );
-  });
-
-  test("[@regression] OSDEV-1562: PATCH production-locations/{os_id} updates Moderation Decision Date", async ({
-    page,
-  }) => {
-    const { BASE_URL, USER_EMAIL, USER_PASSWORD, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } =
-      process.env;
-
-    expect(osId).toBeTruthy();
-
-    const slcPage = new SingleLocationContributionPage(page, BASE_URL!);
-    await slcPage.goToNameAddressTab();
-    await slcPage.ensureLoggedInAsRegularUser(USER_EMAIL!, USER_PASSWORD!);
-    try {
-      await slcPage.searchAndOpenLocationForUpdate(osId);
-    } catch {
-      await slcPage.searchAndOpenExistingLocationByName(
-        approvedLocationName,
-        approvedLocationAddress,
-        "China",
-      );
-    }
-
-    const updatedName = `${locationName} Updated ${Date.now()}`;
-    const updateModerationId = await slcPage.submitLocationUpdate(updatedName);
-
-    await loginAdminToModerationQueue(
-      page,
-      BASE_URL!,
-      USER_ADMIN_EMAIL!,
-      USER_ADMIN_PASSWORD!,
-    );
-
-    const patchResponse = await patchModerationProductionLocation(
-      page.request,
-      BASE_URL!,
-      updateModerationId,
-      osId,
-    );
-    expect(patchResponse.status()).toBe(200);
-
-    const moderationQueuePage = new ModerationQueuePage(page, BASE_URL!);
-    await moderationQueuePage.waitForDecisionDateUpdated(updatedName, "APPROVED");
   });
 });

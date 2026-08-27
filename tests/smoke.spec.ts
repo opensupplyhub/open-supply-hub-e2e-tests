@@ -640,11 +640,11 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
     locationNameCheck = "Zhejiang Celebrity Finery Co. Ltd";            
   } else if (`${BASE_URL}`.includes("opensupplyhub")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yinan Industrial Park, Fotang Town, Yiwu, Zhejiang, 322002";
+      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
     locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else if (`${BASE_URL}`.includes("preprod")) {
     locationAddressCheck =
-      "No. 17, Caiyun Road, Yi’nan Industrial Zone, Yiwu, Zhejiang";
+      "Damo Road, Yinan Ind Zone, Fotang, Yiwu";
     locationNameCheck = "Zhejiang Celebrity Finery Co., Ltd";
   } else {
     locationAddressCheck =

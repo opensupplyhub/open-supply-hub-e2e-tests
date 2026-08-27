@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import type { TestType } from "@playwright/test";
 
 const requiredVars = [
   "BASE_URL",
@@ -19,4 +20,25 @@ export async function setup() {
       throw new Error(`'${name}' env variable is not defined`);
     }
   });
+}
+
+/** Mutating Data Moderator flows are only safe on test / preprod. */
+export function isMutatingEnvironmentAllowed(): boolean {
+  const env = (process.env.ENVIRONMENT || "").toLowerCase();
+  const base = (process.env.BASE_URL || "").toLowerCase();
+  return (
+    env === "test" ||
+    env === "preprod" ||
+    base.includes("test.os-hub.net") ||
+    base.includes("preprod.os-hub.net")
+  );
+}
+
+export function skipIfMutatingNotAllowed(
+  test: Pick<TestType<unknown, unknown>, "skip">,
+) {
+  test.skip(
+    !isMutatingEnvironmentAllowed(),
+    "Mutating tests only run on test/preprod environments",
+  );
 }
