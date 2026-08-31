@@ -11,6 +11,11 @@ export class SettingsPage extends BasePage {
   private heading = () => this.page.getByRole("heading", { name: "Settings" });
   private profileTab = () => this.page.getByRole("tab", { name: "Profile" });
   private embedTab = () => this.page.getByRole("tab", { name: "Embed" });
+  private apiTab = () => this.page.getByRole("tab", { name: "API", exact: true });
+  private cookiePreferencesHeading = () =>
+    this.page.getByRole("heading", { name: "Cookie Preferences" });
+  private cookieAcceptButton = () =>
+    this.page.getByRole("button", { name: /^accept$/i });
   private nameInput = () => this.page.locator("#name");
   private descriptionInput = () => this.page.locator("#description");
   private websiteInput = () => this.page.locator("#website");
@@ -80,5 +85,50 @@ export class SettingsPage extends BasePage {
     await expect(this.nameInput()).toHaveValue(details.name);
     await expect(this.descriptionInput()).toHaveValue(details.description);
     await expect(this.websiteInput()).toHaveValue(details.website);
+  }
+
+  async expectApiTabVisible() {
+    await this.expectToBeVisible(this.apiTab());
+  }
+
+  async expectApiTabHidden() {
+    await expect(this.apiTab()).toHaveCount(0);
+  }
+
+  async openApiTab() {
+    await this.apiTab().click();
+    await expect(this.apiTab()).toHaveAttribute("aria-selected", "true");
+  }
+
+  async expectTokenLimitInfo() {
+    await expect(this.page.getByText("Token:")).toBeVisible();
+    await expect(this.page.getByText("Call Limit:")).toBeVisible();
+    await expect(this.page.getByText("Current Usage:")).toBeVisible();
+    await expect(this.page.getByText("Renewal Period:")).toBeVisible();
+  }
+
+  async expectCookiePreferences() {
+    await this.expectToBeVisible(this.cookiePreferencesHeading());
+    await expect(
+      this.page.getByText(/We use cookies to give you the best experience on Open Supply Hub/i),
+    ).toBeVisible();
+  }
+
+  async rejectCookiePreferences() {
+    const reject = this.page
+      .locator("section, div")
+      .filter({ has: this.cookiePreferencesHeading() })
+      .getByRole("button", { name: /^reject$/i })
+      .first();
+    await expect(reject).toBeVisible();
+    await reject.click();
+  }
+
+  async acceptCookiePreferences() {
+    await this.cookieAcceptButton().click();
+  }
+
+  async expectCookieAcceptVisible() {
+    await expect(this.cookieAcceptButton()).toBeVisible();
   }
 }

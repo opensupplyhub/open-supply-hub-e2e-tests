@@ -13,6 +13,9 @@ export class LoginPage extends BasePage {
   private logoutButton = () => this.page.getByRole("button", { name: "Log Out" });
   private loginRegisterLink = () => this.page.getByRole("link", { name: "Login/Register" });
   private settingsLink = () => this.page.getByRole("link", { name: "Settings" });
+  private myFacilitiesLink = () => this.page.getByRole("link", { name: "My Facilities" });
+  private myListsLink = () => this.page.getByRole("link", { name: "My Lists" });
+  private dashboardLink = () => this.page.locator("a.button--auth", { hasText: "Dashboard" });
   private forgotPasswordControl = () =>
     this.page.locator("div.link-underline.cursor", { hasText: "Forgot your password?" });
   private forgotPasswordDialog = () => this.page.getByRole("dialog");
@@ -140,10 +143,47 @@ export class LoginPage extends BasePage {
     await this.expectGuestSignedOut();
   }
 
-  async openSettings() {
+  async openMyAccountMenu() {
     await this.myAccountButton().click();
-    await this.settingsLink().click();
+    await this.settingsLink().waitFor({ state: "visible" });
+  }
+
+  async expectWebsiteAccountMenu() {
+    await this.openMyAccountMenu();
+    await expect(this.myFacilitiesLink()).toBeVisible();
+    await expect(this.myFacilitiesLink()).toHaveAttribute("href", "/claimed");
+    await expect(this.myListsLink()).toBeVisible();
+    await expect(this.myListsLink()).toHaveAttribute("href", "/lists");
+    await expect(this.settingsLink()).toBeVisible();
+    await expect(this.settingsLink()).toHaveAttribute("href", "/settings");
+    await expect(this.logoutButton()).toBeVisible();
+    await expect(this.dashboardLink()).toHaveCount(0);
+  }
+
+  async openAccountLink(name: "My Facilities" | "My Lists" | "Settings") {
+    await this.openMyAccountMenu();
+    const link =
+      name === "My Facilities"
+        ? this.myFacilitiesLink()
+        : name === "My Lists"
+          ? this.myListsLink()
+          : this.settingsLink();
+    await link.click();
+  }
+
+  async openSettings() {
+    await this.openAccountLink("Settings");
     await this.page.waitForURL("**/settings**");
+  }
+
+  async openMyFacilities() {
+    await this.openAccountLink("My Facilities");
+    await this.page.waitForURL("**/claimed**");
+  }
+
+  async openMyLists() {
+    await this.openAccountLink("My Lists");
+    await this.page.waitForURL("**/lists**");
   }
 
   async verifyMainPageLogin(email: string) {
