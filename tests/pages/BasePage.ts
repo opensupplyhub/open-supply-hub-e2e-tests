@@ -51,10 +51,36 @@ export class BasePage {
     return this.page.url();
   }
 
+  private cookieBanner = () => this.page.getByTestId("gdpr-notification");
+  private acceptCookiesButton = () =>
+    this.page.getByRole("button", { name: /^accept$/i });
+  private rejectCookiesButton = () =>
+    this.page.getByRole("button", { name: /^reject$/i });
+
   async acceptCookiesIfPresent() {
-    const accept = this.page.getByRole("button", { name: /^accept$/i });
+    const accept = this.acceptCookiesButton();
     if (await accept.isVisible().catch(() => false)) {
       await accept.click();
     }
+  }
+
+  async expectCookieBannerVisible() {
+    await expect(this.cookieBanner()).toBeVisible();
+    await expect(this.acceptCookiesButton()).toBeVisible();
+    await expect(this.rejectCookiesButton()).toBeVisible();
+  }
+
+  async acceptCookieBanner() {
+    await this.acceptCookiesButton().click();
+    await this.expectCookieBannerHidden();
+  }
+
+  async rejectCookieBanner() {
+    await this.rejectCookiesButton().click();
+    await this.expectCookieBannerHidden();
+  }
+
+  async expectCookieBannerHidden() {
+    await expect(this.cookieBanner()).toHaveCount(0);
   }
 } 

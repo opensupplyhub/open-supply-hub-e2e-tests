@@ -38,9 +38,18 @@ export type FacilityFeature = {
     country_code?: string;
     country_name?: string;
     contributors?: unknown[];
+    has_approved_claim?: boolean;
     is_closed?: boolean;
     number_of_public_contributors?: number;
   };
+};
+
+export type FacilityActivityReport = {
+  id: number;
+  facility: string;
+  facility_name?: string;
+  status: string;
+  closure_state: string;
 };
 
 export type ProductionLocation = {
@@ -215,6 +224,61 @@ export class FacilitiesApi extends ApiClient {
   async withOneContributor() {
     const feature = await this.findWithContributorCount(1);
     return { osId: feature.id, name: feature.properties?.name ?? "" };
+  }
+
+  async totalCount(): Promise<number> {
+    const { count } = await this.list(
+      { pageSize: 1, number_of_public_contributors: true },
+      process.env.AUTH_TOKEN,
+    );
+    return count;
+  }
+
+  async withApprovedClaim(pageSize = 50) {
+    const { features } = await this.list(
+      { pageSize, sort_by: "contributors_desc" },
+      process.env.AUTH_TOKEN,
+    );
+    const match = features.find((feature) => feature.properties?.has_approved_claim);
+    expect(match, "No facility with an approved claim in search results").toBeTruthy();
+    return match!;
+  }
+
+  async unclaimedOpen(pageSize = 50) {
+    const { features } = await this.list(
+      { pageSize, sort_by: "contributors_desc" },
+      process.env.AUTH_TOKEN,
+    );
+    const match = features.find(
+      (feature) =>
+        !feature.properties?.has_approved_claim && !feature.properties?.is_closed,
+    );
+    expect(match, "No unclaimed open facility in search results").toBeTruthy();
+    return match!;
+  }
+
+  async closedOsId() {
+    const reports = await this.jsonList<FacilityActivityReport>(
+      "/api/facility-activity-reports/",
+      { authenticate: true },
+      "GET facility-activity-reports",
+    );
+    for (const report of reports) {
+      if (report.status !== "CONFIRMED" || report.closure_state !== "CLOSED") {
+        continue;
+      }
+      const response = await this.getByOsId(report.facility, process.env.AUTH_TOKEN);
+      if (!response.ok()) {
+        continue;
+      }
+      const body = (await response.json()) as {
+        properties?: { is_closed?: boolean | null };
+      };
+      if (body.properties?.is_closed) {
+        return report.facility;
+      }
+    }
+    throw new Error("No confirmed closed facility available");
   }
 
   async withDifferingMatchName(countries: string[]) {
