@@ -1,4 +1,4 @@
-import { Page, expect } from "@playwright/test";
+import { Locator, Page, Response, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
 import {
   EMBED_DOWNLOAD_RESULTS_LIMIT,
@@ -23,6 +23,10 @@ export type ResultLocation = {
 };
 
 const RESULT_SAMPLE_SIZE = 10;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export class MainPage extends BasePage {
   // Locators
@@ -62,9 +66,21 @@ export class MainPage extends BasePage {
   // Filter dropdowns
   private countriesControl = () => this.page.locator("#COUNTRIES .select__control");
   private countryInput = () => this.page.locator("#COUNTRIES input[type='text']");
-  private countryOption = (countryName: string) =>
-    this.page.locator(".select__option").filter({ hasText: new RegExp(`^${countryName}$`) }).first();
   private countryChip = () => this.page.locator("#COUNTRIES .select__multi-value__label");
+  private contributorDropdownIndicator = () =>
+    this.page.locator("#CONTRIBUTORS .select__indicators > div").last();
+  private contributorInput = () => this.page.locator("#CONTRIBUTORS input[type='text']");
+  private contributorChips = () =>
+    this.page.locator("#CONTRIBUTORS .select__multi-value__label");
+  private sharedFacilitiesCheckbox = () =>
+    this.page.getByRole("checkbox", { name: "Show only shared facilities" });
+  private primarySearchSubmit = () =>
+    this.findFacilitiesButton().or(this.resultsSearchButton());
+  private exactSelectOption = (name: string) =>
+    this.page
+      .locator(".select__option")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) })
+      .first();
   private facilityTypeDropdown = () => this.page.locator("#FACILITY_TYPE div").filter({ hasText: "Select" }).first();
   private workersDropdown = () => this.page.locator("#NUMBER_OF_WORKERS div").filter({ hasText: "Select" }).first();
   private addDataLink = () => this.page.getByRole("link", { name: "Add Data" });
@@ -86,12 +102,7 @@ export class MainPage extends BasePage {
   }
 
   async clearPersistedSearchState() {
-    const hadState = await this.page.evaluate(() => {
-      const had = localStorage.length > 0 || sessionStorage.length > 0;
-      localStorage.clear();
-      sessionStorage.clear();
-      return had;
-    });
+    const hadState = await this.clearBrowserStorage();
     if (hadState) {
       await this.page.reload({ waitUntil: "networkidle" });
       await this.acceptCookiesIfPresent();
@@ -173,9 +184,7 @@ export class MainPage extends BasePage {
         (!urlIncludes || resp.url().includes(urlIncludes)),
     );
     await this.findFacilitiesButton().click();
-    const response = await facilitiesResponse;
-    expect(response.status(), "GET /api/facilities/").toBe(200);
-    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
+    await this.expectFacilitiesSearchSettled(await facilitiesResponse);
   }
 
   async searchByOSID(osId: string) {
@@ -186,10 +195,68 @@ export class MainPage extends BasePage {
 
   async searchByCountry(countryName: string) {
     await this.countriesControl().click();
-    await this.countryInput().pressSequentially(countryName, { delay: 40 });
-    await expect(this.countryOption(countryName)).toBeVisible();
-    await this.page.keyboard.press("Enter");
+    await this.typeAndSelectOption(this.countryInput(), countryName);
     await expect(this.countryChip()).toHaveText(countryName);
+  }
+
+  async selectDataContributor(name: string) {
+    await this.contributorDropdownIndicator().click();
+    await this.typeAndSelectOption(this.contributorInput(), name);
+    await expect(this.contributorChips().filter({ hasText: name })).toHaveText(name);
+    await this.page.keyboard.press("Escape");
+  }
+
+  async expectDataContributors(names: string[]) {
+    await expect(this.contributorChips()).toHaveCount(names.length);
+    for (const name of names) {
+      await expect(this.contributorChips().filter({ hasText: name })).toHaveText(name);
+    }
+  }
+
+  async expectSharedFacilitiesCheckboxHidden() {
+    await expect(this.sharedFacilitiesCheckbox()).toHaveCount(0);
+  }
+
+  async expectSharedFacilitiesCheckboxVisible() {
+    await expect(this.sharedFacilitiesCheckbox()).toBeVisible();
+    await expect(this.sharedFacilitiesCheckbox()).not.toBeChecked();
+  }
+
+  async applyTwoContributorSharedFilter(first: string, second: string) {
+    await this.selectDataContributor(first);
+    await this.expectDataContributors([first]);
+    await this.expectSharedFacilitiesCheckboxHidden();
+    await this.selectDataContributor(second);
+    await this.expectDataContributors([first, second]);
+    await this.expectSharedFacilitiesCheckboxVisible();
+  }
+
+  async checkShowOnlySharedFacilities() {
+    await this.sharedFacilitiesCheckbox().check();
+    await expect(this.sharedFacilitiesCheckbox()).toBeChecked();
+  }
+
+  private async expectContributorSearchApplied(contributorCount: number, combine = false) {
+    await expect(this.page).toHaveURL((url) =>
+      this.matchesContributorQuery(url, contributorCount, combine),
+    );
+  }
+
+  async submitContributorSearch(
+    contributorCount: number,
+    combine = false,
+  ): Promise<{ count: number }> {
+    const facilitiesResponse = this.page.waitForResponse(
+      (resp) => {
+        const url = this.facilitiesCollectionUrl(resp);
+        return url ? this.matchesContributorQuery(url, contributorCount, combine) : false;
+      },
+      { timeout: 60000 },
+    );
+    await this.primarySearchSubmit().click();
+    const count = await this.readFacilitiesCount(await facilitiesResponse);
+    await this.expectContributorSearchApplied(contributorCount, combine);
+    return { count };
   }
 
   async submitFindFacilities(countryCode?: string) {
@@ -302,6 +369,11 @@ export class MainPage extends BasePage {
 
   async goToUnfilteredFacilitiesSearch() {
     await this.goToFacilitiesSearch("/facilities/");
+  }
+
+  async goToFreshFacilitiesSearch() {
+    await this.clearBrowserStorage();
+    await this.goToFacilitiesSearch("/facilities");
   }
 
   async openDownloadMenu() {
@@ -467,12 +539,7 @@ export class MainPage extends BasePage {
   async submitResultsSearch(): Promise<{ count: number }> {
     const facilitiesResponse = this.waitForUnfilteredFacilitiesList();
     await this.resultsSearchButton().click();
-    const response = await facilitiesResponse;
-    expect(response.status(), "GET /api/facilities/").toBe(200);
-    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
-    const body = (await response.json()) as { count?: number };
-    expect(body.count, "GET /api/facilities/ count").toEqual(expect.any(Number));
-    return { count: body.count as number };
+    return { count: await this.readFacilitiesCount(await facilitiesResponse) };
   }
 
   async copySearchLink(): Promise<string> {
@@ -672,11 +739,8 @@ export class MainPage extends BasePage {
   private waitForUnfilteredFacilitiesList() {
     return this.page.waitForResponse(
       (resp) => {
-        if (resp.request().method() !== "GET") {
-          return false;
-        }
-        const url = new URL(resp.url());
-        if (!/\/api\/facilities\/?$/.test(url.pathname) || url.searchParams.has("page")) {
+        const url = this.facilitiesCollectionUrl(resp);
+        if (!url) {
           return false;
         }
         return ![
@@ -691,5 +755,52 @@ export class MainPage extends BasePage {
       },
       { timeout: 60000 },
     );
+  }
+
+  private async typeAndSelectOption(input: Locator, name: string) {
+    await input.pressSequentially(name, { delay: 40 });
+    await expect(this.exactSelectOption(name)).toBeVisible();
+    await this.page.keyboard.press("Enter");
+  }
+
+  private async clearBrowserStorage() {
+    return this.page.evaluate(() => {
+      const had = localStorage.length > 0 || sessionStorage.length > 0;
+      localStorage.clear();
+      sessionStorage.clear();
+      return had;
+    });
+  }
+
+  private facilitiesCollectionUrl(resp: Response): URL | null {
+    if (resp.request().method() !== "GET") {
+      return null;
+    }
+    const url = new URL(resp.url());
+    if (!/\/api\/facilities\/?$/.test(url.pathname) || url.searchParams.has("page")) {
+      return null;
+    }
+    return url;
+  }
+
+  private matchesContributorQuery(url: URL, contributorCount: number, combine = false) {
+    const contributors = url.searchParams.getAll("contributors");
+    if (contributors.length !== contributorCount) {
+      return false;
+    }
+    const combined = url.searchParams.get("combine_contributors") === "AND";
+    return combine ? combined : !combined;
+  }
+
+  private async expectFacilitiesSearchSettled(response: Response) {
+    expect(response.status(), "GET /api/facilities/").toBe(200);
+    await this.resultsText().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  private async readFacilitiesCount(response: Response): Promise<number> {
+    await this.expectFacilitiesSearchSettled(response);
+    const body = (await response.json()) as { count?: number };
+    expect(body.count, "GET /api/facilities/ count").toEqual(expect.any(Number));
+    return body.count as number;
   }
 }

@@ -11,6 +11,11 @@ import { FacilitiesApi } from "./utils/api";
 const GUEST_COPY_SEARCH_PATH =
   "/facilities?contributor_types=Academic+%2F+Researcher+%2F+Journalist+%2F+Student&countries=US&sectors=Accommodation&sectors=Apparel&sectors=Apparel+Accessories&sectors=Footwear&sectors=Home+Accessories&sectors=Home+Textiles&sectors=Jewelry&sectors=Leather&sectors=Material+Production&sectors=Printing&sectors=Renting&sectors=Sporting+Goods&sectors=Textiles&facility_type=Final+Product+Assembly&facility_type=Textile+or+Material+Production&processing_type=Final+Product+Assembly&processing_type_exact=Final+Product+Assembly&sort_by=contributors_desc";
 
+const SHARED_FACILITY_CONTRIBUTORS = {
+  first: "Amazon.com, Inc.",
+  second: "Marks & Spencer",
+} as const;
+
 test.beforeAll(setup);
 
 const GUEST_LANGUAGES = [
@@ -171,6 +176,43 @@ test.describe("[@regression] Guest users", () => {
     expect(unfilteredApiCount).toBe(catalogCount);
     await mainPage.expectResultsCount(catalogCount);
     expect(catalogCount).toBeGreaterThan(filteredCount);
+    await loginPage.expectGuestSignedOut();
+  });
+
+  test("[@regression] OSDEV-3289: Guest user can filter by Data Contributor and Show only shared facilities", async ({
+    page,
+  }) => {
+    test.setTimeout(180000);
+    const { BASE_URL } = process.env;
+    const mainPage = new MainPage(page, BASE_URL!);
+    const loginPage = new LoginPage(page, BASE_URL!);
+    const { first, second } = SHARED_FACILITY_CONTRIBUTORS;
+
+    const searchWithTwoContributors = async () => {
+      await mainPage.applyTwoContributorSharedFilter(first, second);
+      const { count } = await mainPage.submitContributorSearch(2);
+      expect(count).toBeGreaterThan(0);
+      await mainPage.expectResultsCount(count);
+      return count;
+    };
+
+    await mainPage.goTo();
+    await mainPage.acceptCookiesIfPresent();
+    await loginPage.expectGuestSignedOut();
+
+    await searchWithTwoContributors();
+    await mainPage.expectSearchResults();
+
+    await mainPage.goToFreshFacilitiesSearch();
+    await loginPage.expectGuestSignedOut();
+
+    const contributorCount = await searchWithTwoContributors();
+
+    await mainPage.checkShowOnlySharedFacilities();
+    const { count: sharedCount } = await mainPage.submitContributorSearch(2, true);
+    await mainPage.expectResultsCount(sharedCount);
+    expect(sharedCount).toBeGreaterThan(0);
+    expect(sharedCount).toBeLessThan(contributorCount);
     await loginPage.expectGuestSignedOut();
   });
 

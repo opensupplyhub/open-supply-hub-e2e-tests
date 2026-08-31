@@ -23,7 +23,10 @@ user and/or agent exercise the flow → on **done** agent posts clean
 
 | User says / pastes | Agent does |
 | --- | --- |
-| `https://opensupplyhub.atlassian.net/browse/OSDEV-####` or `OSDEV-####` | Start a session for that issue |
+| `https://opensupplyhub.atlassian.net/browse/OSDEV-####` or `OSDEV-####` | Start a session for that issue; always read the ticket |
+| Link only, ticket has no steps | Open headed browser, then ask the engineer to perform the manual test there |
+| Link only, ticket has steps | Go through the ticket steps |
+| Link **and** steps/details in chat | Check the ticket too; combine all rules and requirements; go through them |
 | login with admin rights / admin login | Use `USER_ADMIN_EMAIL` / `USER_ADMIN_PASSWORD` |
 | Mid-session directions (API fetch, merge, split, verify page, etc.) | Execute and keep logging |
 | done / ready / add … to the test case | Build steps from log → Jira comment |
@@ -52,10 +55,23 @@ Shell commands that `source .env` or mutate preprod usually need
 
 ### 1. Ticket arrives
 
-1. `getJiraIssue` (`summary`, `description`, labels, status).
-2. Infer start URL from title/description (dashboard path, admin, facilities, etc.).
-3. Stop any previous `manual_test_recorder.js` / leftover headed Chromium for this workflow.
-4. Tell the user the ticket key + summary and that the browser is ready.
+1. Confirm the repo is **already on a new branch** for the current changes. If HEAD is `main` or `master`, stop and ask the engineer to check out a new branch before opening the browser or editing files.
+2. `getJiraIssue` (`summary`, `description`, comments, labels, status). Always read the ticket, even when the user also pasted steps.
+3. Infer start URL from title/description (dashboard path, admin, facilities, etc.).
+4. Stop any previous `manual_test_recorder.js` / leftover headed Chromium for this workflow.
+5. Decide how to execute (1b), then open the browser (2).
+
+### 1b. Combine ticket + chat, then execute
+
+A ticket **has steps** only when description or comments contain a real procedure (actions / expected results). Empty placeholders such as `1. …` do **not** count as steps.
+
+| What the user sent | Ticket has steps? | Agent does |
+| --- | --- | --- |
+| Only the OSDEV link/key | No | Open the headed browser, then **ask an engineer to perform the manual test on the opened headed browser** |
+| Only the OSDEV link/key | Yes | Go through the ticket steps in the headed browser |
+| Steps and details provided with the task | Check inside either way | Make a combination of all rules and requirements (chat + ticket summary, description, comments, labels) and go through them |
+
+Do not follow chat-only instructions while ignoring the ticket, or ticket-only steps while ignoring extra constraints the user sent with the link.
 
 ### 2. Open browser (default: recorder)
 
@@ -74,12 +90,11 @@ node scripts/manual_test_recorder.js /dashboard/activityreports OSDEV-####
 - Run with `block_until_ms: 0` (browser stays open).
 - Cookie banner: click **ACCEPT** when present (recorder does this on auto-login).
 - Confirm log file exists and `session_start` / `auto_login` / `ready` appear.
+- Tell the user the ticket key + summary and that the browser is ready.
 
-**Agent-driven alternative:** when the flow is short and clear (confirm/reject,
-filter, download, ACL check), run a headed Playwright one-shot that mutates
-preprod as needed, appends structured events to the same jsonl, then summarize
-and wait for **done** before commenting. Still log IDs, API status, and UI
-assertions.
+If the ticket has no steps and the user sent only the link, **ask an engineer to perform the manual test on the opened headed browser** and wait. Do not invent a flow.
+
+**Agent-driven alternative:** when there are steps to follow (ticket and/or chat) and the flow is short and clear (confirm/reject, filter, download, ACL check), run a headed Playwright one-shot that mutates preprod as needed, appends structured events to the same jsonl, then summarize and wait for **done** before commenting. Still log IDs, API status, and UI assertions.
 
 ### 3. During the session
 
