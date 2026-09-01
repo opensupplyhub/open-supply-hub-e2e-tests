@@ -14,8 +14,12 @@ export class SettingsPage extends BasePage {
   private apiTab = () => this.page.getByRole("tab", { name: "API", exact: true });
   private cookiePreferencesHeading = () =>
     this.page.getByRole("heading", { name: "Cookie Preferences" });
+  private cookiePreferencesSection = () =>
+    this.page.locator("section, div").filter({ has: this.cookiePreferencesHeading() });
   private cookieAcceptButton = () =>
     this.page.getByRole("button", { name: /^accept$/i });
+  private cookieRejectButton = () =>
+    this.cookiePreferencesSection().getByRole("button", { name: /^reject$/i }).first();
   private nameInput = () => this.page.locator("#name");
   private descriptionInput = () => this.page.locator("#description");
   private websiteInput = () => this.page.locator("#website");
@@ -115,13 +119,8 @@ export class SettingsPage extends BasePage {
   }
 
   async rejectCookiePreferences() {
-    const reject = this.page
-      .locator("section, div")
-      .filter({ has: this.cookiePreferencesHeading() })
-      .getByRole("button", { name: /^reject$/i })
-      .first();
-    await expect(reject).toBeVisible();
-    await reject.click();
+    await expect(this.cookieRejectButton()).toBeVisible();
+    await this.cookieRejectButton().click();
   }
 
   async acceptCookiePreferences() {

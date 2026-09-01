@@ -40,10 +40,8 @@ export class LoginPage extends BasePage {
 
   async loginViaAuthPage(email: string, password: string) {
     await this.goTo("/auth/login");
-    await this.page.locator("#LOGIN_EMAIL").fill(email);
-    await this.page.locator("#LOGIN_PASSWORD").fill(password);
-    await this.page.getByRole("button", { name: "LOG IN" }).click();
-    await this.expectSignedIn();
+    await this.acceptCookiesIfPresent();
+    await this.submitAuthLoginForm(email, password);
   }
 
   async expectGuestSignedOut() {
@@ -56,6 +54,13 @@ export class LoginPage extends BasePage {
     const notice = this.page.getByRole("link", { name: linkName });
     await expect(notice).toBeVisible();
     await expect(notice).toHaveAttribute("href", "/auth/login");
+  }
+
+  async loginFromContributeLink(email: string, password: string) {
+    await this.page
+      .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
+      .click();
+    await this.submitAuthLoginForm(email, password);
   }
 
   async openLoginFromHeader() {
@@ -129,6 +134,11 @@ export class LoginPage extends BasePage {
     await this.waitForLoadState();
   }
 
+  private async submitAuthLoginForm(email: string, password: string) {
+    await this.completeLoginForm(email, password);
+    await this.expectSignedIn();
+  }
+
   async logoutFromMainPage() {
     await this.myAccountButton().click();
     await this.expectToBeVisible(this.logoutButton());
@@ -162,13 +172,12 @@ export class LoginPage extends BasePage {
 
   async openAccountLink(name: "My Facilities" | "My Lists" | "Settings") {
     await this.openMyAccountMenu();
-    const link =
-      name === "My Facilities"
-        ? this.myFacilitiesLink()
-        : name === "My Lists"
-          ? this.myListsLink()
-          : this.settingsLink();
-    await link.click();
+    const links = {
+      "My Facilities": this.myFacilitiesLink,
+      "My Lists": this.myListsLink,
+      Settings: this.settingsLink,
+    } as const;
+    await links[name]().click();
   }
 
   async openSettings() {

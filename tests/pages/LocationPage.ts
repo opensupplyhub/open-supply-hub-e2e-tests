@@ -1,6 +1,19 @@
 import { Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
 
+const REPORT_STATUS_COPY = {
+  closed: {
+    title: "Report production location closed",
+    loginMessage:
+      "You must be logged in to report this production location as closed",
+  },
+  reopened: {
+    title: "Report production location reopened",
+    loginMessage:
+      "You must be logged in to report this production location as reopened",
+  },
+} as const;
+
 export class LocationPage extends BasePage {
   private locationName = () => this.page.getByTestId("location-name");
   private osId = () => this.page.getByTestId("os-id");
@@ -126,18 +139,11 @@ export class LocationPage extends BasePage {
     await expect(this.reportStatusDialog()).toBeVisible();
   }
 
-  async expectReportStatusLoginPrompt(kind: "closed" | "reopened") {
+  async expectReportStatusLoginPrompt(kind: keyof typeof REPORT_STATUS_COPY) {
     const dialog = this.reportStatusDialog();
-    const title =
-      kind === "closed"
-        ? "Report production location closed"
-        : "Report production location reopened";
-    const message =
-      kind === "closed"
-        ? "You must be logged in to report this production location as closed"
-        : "You must be logged in to report this production location as reopened";
-    await expect(dialog.getByText(title)).toBeVisible();
-    await expect(dialog.getByText(message)).toBeVisible();
+    const copy = REPORT_STATUS_COPY[kind];
+    await expect(dialog.getByText(copy.title)).toBeVisible();
+    await expect(dialog.getByText(copy.loginMessage)).toBeVisible();
     await expect(this.reportStatusLogin()).toBeVisible();
     await expect(this.reportStatusLogin()).toHaveAttribute("href", "/auth/login");
   }
@@ -147,13 +153,9 @@ export class LocationPage extends BasePage {
     await expect(this.reportStatusDialog()).toHaveCount(0);
   }
 
-  async expectSignedInReportDialog(kind: "closed" | "reopened") {
+  async expectSignedInReportDialog(kind: keyof typeof REPORT_STATUS_COPY) {
     const dialog = this.reportStatusDialog();
-    const title =
-      kind === "closed"
-        ? "Report production location closed"
-        : "Report production location reopened";
-    await expect(dialog.getByText(title)).toBeVisible();
+    await expect(dialog.getByText(REPORT_STATUS_COPY[kind].title)).toBeVisible();
     await expect(this.reportReason()).toBeVisible();
     await expect(this.reportCancel()).toBeVisible();
     await expect(this.reportSubmit()).toBeVisible();

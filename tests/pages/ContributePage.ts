@@ -10,6 +10,8 @@ export class ContributePage extends BasePage {
     this.page.getByRole("button", { name: "Upload Multiple Locations" });
   private singleLocationButton = () =>
     this.page.getByRole("button", { name: "Add a Single Location" });
+  private searchHeading = () =>
+    this.page.getByRole("heading", { name: "Production Location Search" });
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -18,6 +20,7 @@ export class ContributePage extends BasePage {
   async goToContribute() {
     await this.goTo("/contribute");
     await this.acceptCookiesIfPresent();
+    await this.expectContributeHome();
   }
 
   async expectContributeHome() {
@@ -36,14 +39,12 @@ export class ContributePage extends BasePage {
   async openUploadMultipleLocations() {
     await this.uploadMultipleButton().click();
     await this.page.waitForURL("**/contribute/multiple-locations**");
-    await expect(this.page.getByRole("heading", { name: "Upload" })).toBeVisible();
   }
 
   async openSingleLocation() {
     await this.singleLocationButton().click();
     await this.page.waitForURL(/\/contribute\/single-location/);
-    await expect(
-      this.page.getByRole("heading", { name: "Production Location Search" }),
-    ).toBeVisible();
+    await this.acceptCookiesIfPresent();
+    await this.expectToBeVisible(this.searchHeading());
   }
 }

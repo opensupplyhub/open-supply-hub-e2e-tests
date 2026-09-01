@@ -20,18 +20,21 @@ export class ClaimedFacilitiesPage extends BasePage {
   async expectClaimedList() {
     await expect(this.page).toHaveURL(/\/claimed\/?$/);
     await this.expectToBeVisible(this.heading());
-    await expect(this.page.getByText("Name", { exact: true }).first()).toBeVisible();
-    await expect(this.page.getByText("OS ID", { exact: true }).first()).toBeVisible();
-    await expect(this.page.getByText("Address", { exact: true }).first()).toBeVisible();
-    await expect(this.page.getByText("Country", { exact: true }).first()).toBeVisible();
+    for (const header of ["Name", "OS ID", "Address", "Country"]) {
+      await expect(this.page.getByText(header, { exact: true }).first()).toBeVisible();
+    }
     await expect(this.tableRows().first()).toBeVisible({ timeout: 30000 });
+  }
+
+  async expectDetails() {
+    await this.expectToBeVisible(this.detailsHeading());
+    await this.expectToBeVisible(this.saveButton());
   }
 
   async openFirstClaim() {
     await this.tableRows().first().click();
     await this.page.waitForURL(/\/claimed\/\d+\/?/);
-    await this.expectToBeVisible(this.detailsHeading());
-    await this.expectToBeVisible(this.saveButton());
+    await this.expectDetails();
   }
 
   async getDescription(): Promise<string> {
@@ -52,5 +55,6 @@ export class ClaimedFacilitiesPage extends BasePage {
     );
     await this.saveButton().click();
     await saveResponse;
+    await this.expectDetails();
   }
 }

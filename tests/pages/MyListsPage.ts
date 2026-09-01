@@ -42,19 +42,77 @@ export class MyListsPage extends BasePage {
     await this.page.waitForURL(/\/contribute\/?$/);
   }
 
+  private listRow(listName: string) {
+    return this.tableRows().filter({ hasText: listName }).first();
+  }
+
   async expectListVisible(listName: string) {
-    await expect(
-      this.page.locator("table tbody tr").filter({ hasText: listName }).first(),
-    ).toBeVisible({ timeout: 60000 });
+    await expect(this.listRow(listName)).toBeVisible({ timeout: 60000 });
   }
 
   async openListByName(listName: string) {
-    await this.page
-      .locator("table tbody tr")
-      .filter({ hasText: listName })
-      .first()
-      .click({ force: true });
+    await this.listRow(listName).click({ force: true });
     await this.page.waitForURL(/\/lists\/\d+/);
+  }
+
+  async goToList(listId: number) {
+    await this.goTo(`/lists/${listId}`);
+    await this.acceptCookiesIfPresent();
+  }
+
+  async expectFirstRow(values: {
+    name: string;
+    description: string;
+    fileName: string;
+  }) {
+    const row = this.tableRows().first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+    const headers = this.page.locator("table thead tr th");
+    const columns = [
+      { name: "Name", value: values.name },
+      { name: "Description", value: values.description },
+      { name: "File Name", value: values.fileName },
+    ];
+    for (const [index, column] of columns.entries()) {
+      await expect(headers.nth(index)).toHaveText(column.name);
+      await expect(row.locator("td").nth(index)).toHaveText(column.value);
+    }
+  }
+
+  async expectListDetail(status: string) {
+    await expect(this.page.getByRole("heading", { name: "List Status" })).toBeVisible();
+    await expect(this.page.getByRole("heading", { name: status })).toBeVisible();
+    await this.expectListDetailDownloads();
+    await expect(this.page.getByRole("button", { name: /Back to lists/i })).toBeVisible();
+  }
+
+  async expectListHeading(listName: string) {
+    await expect(
+      this.page.getByRole("heading", { name: listName }),
+    ).toBeVisible();
+  }
+
+  async filterItemsByStatus(status: string) {
+    await this.page.locator(".select__value-container").click();
+    await this.page.locator(`.select__option:has-text('${status}')`).click();
+    await expect(this.page.locator(".select__multi-value__label")).toHaveText(
+      new RegExp(status),
+    );
+    await this.waitForLoadState("networkidle");
+  }
+
+  async expectErrorRowCount(count: number) {
+    await expect(this.tableRows()).toHaveCount(count);
+  }
+
+  async toggleErrorRow(index: number) {
+    await this.page.evaluate(() => window.scrollBy(0, 100));
+    await this.tableRows().nth(index).click({ force: true, timeout: 5000 });
+  }
+
+  async expectExpandedRowError(text: string) {
+    await expect(this.page.getByText("Errors")).toBeVisible();
+    await expect(this.page.getByText(text)).toBeVisible();
   }
 
   async expectListDetailDownloads() {
@@ -72,9 +130,5 @@ export class MyListsPage extends BasePage {
     const download = this.page.waitForEvent("download", { timeout: 60000 });
     await this.downloadSubmitted().click();
     return download;
-  }
-
-  async expectRowsPresent() {
-    await expect(this.tableRows().first()).toBeVisible({ timeout: 30000 });
   }
 }

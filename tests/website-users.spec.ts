@@ -4,6 +4,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { MainPage } from "./pages/MainPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ContributePage } from "./pages/ContributePage";
+import { ContributeListPage } from "./pages/ContributeListPage";
 import { ClaimedFacilitiesPage } from "./pages/ClaimedFacilitiesPage";
 import { MyListsPage } from "./pages/MyListsPage";
 import { LocationPage } from "./pages/LocationPage";
@@ -17,6 +18,8 @@ import {
 
 test.beforeAll(setup);
 
+type WebsiteUserKind = "website" | "api";
+
 function pages(page: Page) {
   const { BASE_URL } = process.env;
   return {
@@ -24,28 +27,45 @@ function pages(page: Page) {
     mainPage: new MainPage(page, BASE_URL!),
     settingsPage: new SettingsPage(page, BASE_URL!),
     contributePage: new ContributePage(page, BASE_URL!),
+    listPage: new ContributeListPage(page, BASE_URL!),
     claimedPage: new ClaimedFacilitiesPage(page, BASE_URL!),
     listsPage: new MyListsPage(page, BASE_URL!),
     locationPage: new LocationPage(page, BASE_URL!),
   };
 }
 
-async function loginAs(
-  page: Page,
-  email: string,
-  password: string,
-) {
-  const { loginPage } = pages(page);
-  await loginPage.loginViaAuthPage(email, password);
-  return loginPage;
+function credentials(kind: WebsiteUserKind) {
+  if (kind === "api") {
+    return {
+      email: process.env.USER_API_EMAIL!,
+      password: process.env.USER_API_PASSWORD!,
+    };
+  }
+  return {
+    email: process.env.USER_EMAIL!,
+    password: process.env.USER_PASSWORD!,
+  };
 }
 
-async function loginWebsiteUser(page: Page) {
-  return loginAs(page, process.env.USER_EMAIL!, process.env.USER_PASSWORD!);
+async function signIn(page: Page, kind: WebsiteUserKind = "website") {
+  const p = pages(page);
+  const { email, password } = credentials(kind);
+  await p.loginPage.loginViaAuthPage(email, password);
+  return p;
 }
 
-async function loginApiUser(page: Page) {
-  return loginAs(page, process.env.USER_API_EMAIL!, process.env.USER_API_PASSWORD!);
+async function signInOnMap(page: Page, kind: WebsiteUserKind = "website") {
+  const p = await signIn(page, kind);
+  await p.mainPage.goTo();
+  await p.mainPage.acceptCookiesIfPresent();
+  return p;
+}
+
+async function openContributeHome(page: Page) {
+  const p = await signInOnMap(page);
+  await p.mainPage.openAddData();
+  await p.contributePage.expectContributeHome();
+  return p;
 }
 
 test.describe("[@regression] Website users", () => {
@@ -53,13 +73,8 @@ test.describe("[@regression] Website users", () => {
     page,
   }) => {
     const { USER_API_EMAIL } = process.env;
-    const { mainPage, settingsPage } = pages(page);
+    const { loginPage, settingsPage } = await signInOnMap(page, "api");
 
-    await loginApiUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
-
-    const { loginPage } = pages(page);
     await loginPage.openSettings();
     await settingsPage.expectProfileForm(USER_API_EMAIL!);
     await settingsPage.expectApiTabVisible();
@@ -71,11 +86,8 @@ test.describe("[@regression] Website users", () => {
     page,
   }) => {
     const { USER_EMAIL } = process.env;
-    const { mainPage, settingsPage, loginPage } = pages(page);
+    const { loginPage, settingsPage } = await signInOnMap(page);
 
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
     await loginPage.openSettings();
     await settingsPage.expectProfileForm(USER_EMAIL!);
     await settingsPage.expectApiTabHidden();
@@ -84,11 +96,8 @@ test.describe("[@regression] Website users", () => {
   test("[@regression] OSDEV-3303: user with no lists sees empty My Lists state and the contribute link", async ({
     page,
   }) => {
-    const { mainPage, loginPage, listsPage, contributePage } = pages(page);
+    const { loginPage, listsPage, contributePage } = await signInOnMap(page, "api");
 
-    await loginApiUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
     await loginPage.openMyLists();
     await listsPage.expectEmptyState();
     await listsPage.openContributeFromEmptyState();
@@ -98,22 +107,15 @@ test.describe("[@regression] Website users", () => {
   test("[@regression] OSDEV-3301: My Account from /map shows My Facilities, My Lists, Settings, and Log Out without Dashboard", async ({
     page,
   }) => {
-    const { mainPage, loginPage } = pages(page);
-
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
+    const { loginPage } = await signInOnMap(page);
     await loginPage.expectWebsiteAccountMenu();
   });
 
   test("[@regression] OSDEV-3305: website user can change cookie preferences on the Settings Profile tab", async ({
     page,
   }) => {
-    const { mainPage, loginPage, settingsPage } = pages(page);
+    const { loginPage, settingsPage } = await signInOnMap(page);
 
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
     await loginPage.openSettings();
     await settingsPage.expectCookiePreferences();
     await settingsPage.rejectCookiePreferences();
@@ -126,11 +128,8 @@ test.describe("[@regression] Website users", () => {
     page,
   }) => {
     skipIfMutatingNotAllowed(test);
-    const { mainPage, loginPage, claimedPage } = pages(page);
+    const { loginPage, claimedPage } = await signInOnMap(page);
 
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
     await loginPage.openMyFacilities();
     await claimedPage.expectClaimedList();
     await claimedPage.openFirstClaim();
@@ -140,7 +139,6 @@ test.describe("[@regression] Website users", () => {
     try {
       await claimedPage.fillDescription(updatedDescription);
       await claimedPage.saveClaimDetails();
-      await expect(page.getByRole("heading", { name: "Claimed Facility Details" })).toBeVisible();
     } finally {
       await claimedPage.fillDescription(originalDescription);
       await claimedPage.saveClaimDetails();
@@ -150,13 +148,7 @@ test.describe("[@regression] Website users", () => {
   test("[@regression] OSDEV-3308: website user can open Add a Single Location", async ({
     page,
   }) => {
-    const { mainPage, contributePage } = pages(page);
-
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
-    await mainPage.openAddData();
-    await contributePage.expectContributeHome();
+    const { contributePage } = await openContributeHome(page);
     await contributePage.expectSingleLocationAccess();
     await contributePage.openSingleLocation();
   });
@@ -164,15 +156,11 @@ test.describe("[@regression] Website users", () => {
   test("[@regression] OSDEV-3307: website user can open Upload Multiple Locations", async ({
     page,
   }) => {
-    const { mainPage, contributePage } = pages(page);
-
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
-    await mainPage.openAddData();
-    await contributePage.expectContributeHome();
+    const { contributePage, listPage } = await openContributeHome(page);
     await contributePage.expectUploadMultipleAccess();
+    await contributePage.expectSingleLocationAccess();
     await contributePage.openUploadMultipleLocations();
+    await listPage.expectUploadForm();
   });
 
   test("[@regression] OSDEV-3310: signed-in user can submit Report Closure / Move and Report Reopened", async ({
@@ -180,15 +168,11 @@ test.describe("[@regression] Website users", () => {
   }) => {
     skipIfMutatingNotAllowed(test);
     test.setTimeout(180000);
-    const { mainPage, locationPage } = pages(page);
+    const { locationPage } = await signInOnMap(page);
     const facilitiesApi = new FacilitiesApi(page);
     const openOsId = (await facilitiesApi.unclaimedOpen()).id;
     const closedOsId = await facilitiesApi.closedOsId();
     const reason = `QA website user status report ${Date.now()}`;
-
-    await loginWebsiteUser(page);
-    await mainPage.goTo();
-    await mainPage.acceptCookiesIfPresent();
 
     await locationPage.goToOsId(openOsId);
     await locationPage.expectReportStatusLabel("Report Closure / Move");
@@ -207,9 +191,8 @@ test.describe("[@regression] Website users", () => {
     page,
   }) => {
     test.setTimeout(120000);
-    const { mainPage } = pages(page);
+    const { mainPage } = await signIn(page);
 
-    await loginWebsiteUser(page);
     await mainPage.goToFacilitiesSearch(FILTERED_FACILITIES_PATH);
 
     const downloadResponse = page.waitForResponse(
@@ -230,9 +213,11 @@ test.describe("[@regression] Website users", () => {
     page,
   }) => {
     test.setTimeout(25 * 60 * 1000);
-    const { listsPage } = pages(page);
+    const { listsPage, listPage, loginPage } = await signIn(page);
 
-    await loginWebsiteUser(page);
+    await listPage.goToUploadForm();
+    await loginPage.expectSignedIn();
+    await listPage.expectUploadForm();
     const uploaded = await uploadFacilityList(page, {
       listName: "DO NOT APPROVE website user list",
       description: "OSDEV-1262 website user list download",
