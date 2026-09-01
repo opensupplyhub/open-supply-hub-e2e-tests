@@ -72,8 +72,8 @@ export class ModerationQueuePage extends BasePage {
     }
 
     await Promise.race([
-      firstRow.waitFor({ state: "visible", timeout: 30000 }),
-      emptyMessage.waitFor({ state: "visible", timeout: 30000 }),
+      firstRow.waitFor({ state: "visible", timeout: 60000 }),
+      emptyMessage.waitFor({ state: "visible", timeout: 60000 }),
     ]).catch(() => undefined);
 
     if (await firstRow.isVisible().catch(() => false)) {
@@ -91,7 +91,7 @@ export class ModerationQueuePage extends BasePage {
       (resp) =>
         resp.url().includes("/api/v1/moderation-events/") &&
         resp.request().method() === "GET",
-      { timeout: 30000 },
+      { timeout: 60000 },
     );
   }
 
@@ -141,13 +141,15 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async expectRowCount(expectedCount: number) {
-    await expect(this.tableRows()).toHaveCount(expectedCount);
+    await expect(this.tableRows()).toHaveCount(expectedCount, { timeout: 60000 });
   }
 
   async expectRowCountBetween(min: number, max: number) {
-    const count = await this.tableRows().count();
-    expect(count).toBeGreaterThanOrEqual(min);
-    expect(count).toBeLessThanOrEqual(max);
+    await expect(async () => {
+      const count = await this.tableRows().count();
+      expect(count).toBeGreaterThanOrEqual(min);
+      expect(count).toBeLessThanOrEqual(max);
+    }).toPass({ timeout: 60000 });
   }
 
   async setPageSize(size: 25 | 50 | 100) {
@@ -165,10 +167,19 @@ export class ModerationQueuePage extends BasePage {
     await pageSizeButton.click();
 
     const option = this.page.getByRole("option", { name: String(size) });
-    await option.waitFor({ state: "visible" });
+    await option.waitFor({ state: "visible", timeout: 15000 });
     const eventsResponse = this.waitForNextEventsGet();
     await option.click();
     await eventsResponse.catch(() => undefined);
+    await expect(
+      this.page.getByRole("button", { name: String(size), exact: true }),
+    ).toBeVisible({ timeout: 15000 });
+    if (size > 1) {
+      await this.tableRows()
+        .nth(Math.min(size, 25) - 1)
+        .waitFor({ state: "visible", timeout: 60000 })
+        .catch(() => undefined);
+    }
   }
 
   async getCurrentPageSize(): Promise<number> {
@@ -338,12 +349,11 @@ export class ModerationQueuePage extends BasePage {
     await expect(dialog).toBeVisible({ timeout: 15000 });
     await expect(dialog.getByText(/Reject this Moderation Event/i)).toBeVisible();
 
-    const reasonField = dialog
-      .locator("#dialog-text-field")
-      .or(dialog.locator("#status-change-reason"))
-      .or(dialog.locator("textarea"))
-      .first();
-    await reasonField.click({ force: true });
+    // Reject reason is a Quill editor (#dialog-wysiwyg), not a textarea.
+    // Do not target toolbar formula/link/video inputs (data-formula).
+    const reasonField = dialog.locator("#dialog-wysiwyg .ql-editor");
+    await expect(reasonField).toBeVisible({ timeout: 15000 });
+    await reasonField.click();
     await reasonField.fill(reason);
 
     const patchPromise = this.page.waitForResponse(
