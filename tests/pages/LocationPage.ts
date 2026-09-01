@@ -1,6 +1,19 @@
 import { Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
 
+const REPORT_STATUS_COPY = {
+  closed: {
+    title: "Report production location closed",
+    loginMessage:
+      "You must be logged in to report this production location as closed",
+  },
+  reopened: {
+    title: "Report production location reopened",
+    loginMessage:
+      "You must be logged in to report this production location as reopened",
+  },
+} as const;
+
 export class LocationPage extends BasePage {
   private locationName = () => this.page.getByTestId("location-name");
   private osId = () => this.page.getByTestId("os-id");
@@ -35,6 +48,12 @@ export class LocationPage extends BasePage {
     this.page.getByTestId("report-facility-status-dialog");
   private reportStatusLogin = () =>
     this.page.getByTestId("report-facility-status-dialog-login");
+  private reportReason = () =>
+    this.reportStatusDialog().getByTestId("report-facility-status-reason");
+  private reportSubmit = () =>
+    this.reportStatusDialog().getByTestId("report-facility-status-dialog-report");
+  private reportCancel = () =>
+    this.reportStatusDialog().getByTestId("report-facility-status-dialog-cancel");
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -120,18 +139,11 @@ export class LocationPage extends BasePage {
     await expect(this.reportStatusDialog()).toBeVisible();
   }
 
-  async expectReportStatusLoginPrompt(kind: "closed" | "reopened") {
+  async expectReportStatusLoginPrompt(kind: keyof typeof REPORT_STATUS_COPY) {
     const dialog = this.reportStatusDialog();
-    const title =
-      kind === "closed"
-        ? "Report production location closed"
-        : "Report production location reopened";
-    const message =
-      kind === "closed"
-        ? "You must be logged in to report this production location as closed"
-        : "You must be logged in to report this production location as reopened";
-    await expect(dialog.getByText(title)).toBeVisible();
-    await expect(dialog.getByText(message)).toBeVisible();
+    const copy = REPORT_STATUS_COPY[kind];
+    await expect(dialog.getByText(copy.title)).toBeVisible();
+    await expect(dialog.getByText(copy.loginMessage)).toBeVisible();
     await expect(this.reportStatusLogin()).toBeVisible();
     await expect(this.reportStatusLogin()).toHaveAttribute("href", "/auth/login");
   }
@@ -139,5 +151,20 @@ export class LocationPage extends BasePage {
   async closeReportStatusDialog() {
     await this.page.keyboard.press("Escape");
     await expect(this.reportStatusDialog()).toHaveCount(0);
+  }
+
+  async expectSignedInReportDialog(kind: keyof typeof REPORT_STATUS_COPY) {
+    const dialog = this.reportStatusDialog();
+    await expect(dialog.getByText(REPORT_STATUS_COPY[kind].title)).toBeVisible();
+    await expect(this.reportReason()).toBeVisible();
+    await expect(this.reportCancel()).toBeVisible();
+    await expect(this.reportSubmit()).toBeVisible();
+    await expect(this.reportStatusLogin()).toHaveCount(0);
+  }
+
+  async submitSignedInStatusReport(reason: string) {
+    await this.reportReason().fill(reason);
+    await this.reportSubmit().click();
+    await expect(this.reportStatusDialog()).toHaveCount(0, { timeout: 30000 });
   }
 }

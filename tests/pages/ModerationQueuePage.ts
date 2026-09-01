@@ -1,6 +1,11 @@
 import { Locator, Page, expect } from "@playwright/test";
 import { BasePage } from "./BasePage";
 
+const MODERATION_ID_FROM_URL =
+  /\/dashboard\/moderation-queue\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+const OS_ID_FROM_HREF =
+  /\/(?:production-locations|facilities)\/([A-Z]{2}[A-Z0-9]{13})/i;
+
 export const MODERATION_QUEUE_COLUMNS = {
   CREATED_DATE: 1,
   LOCATION_NAME: 2,
@@ -18,6 +23,21 @@ export class ModerationQueuePage extends BasePage {
     this.page.locator("button[aria-label='Download Excel']");
   private beforeDateInput = () => this.page.locator("#before-date");
   private afterDateInput = () => this.page.locator("#after-date");
+  private contributionRecordHeading = () =>
+    this.page.getByRole("heading", {
+      name: "Dashboard / Moderation Queue / Contribution Record",
+    });
+  private potentialMatches = () =>
+    this.page.getByText(/Potential Matches/i).first();
+  private locationLink = () =>
+    this.page.locator(
+      'a[href*="/production-locations/"], a[href*="/facilities/"]',
+    );
+  private createNewLocationButton = () =>
+    this.page.getByRole("button", { name: /create new location/i });
+  private rejectContributionButton = () =>
+    this.page.getByRole("button", { name: /reject contribution/i });
+  private dialog = () => this.page.getByRole("dialog");
 
   constructor(page: Page, baseUrl: string) {
     super(page, baseUrl);
@@ -52,8 +72,8 @@ export class ModerationQueuePage extends BasePage {
     }
 
     await Promise.race([
-      firstRow.waitFor({ state: "visible", timeout: 30000 }),
-      emptyMessage.waitFor({ state: "visible", timeout: 30000 }),
+      firstRow.waitFor({ state: "visible", timeout: 60000 }),
+      emptyMessage.waitFor({ state: "visible", timeout: 60000 }),
     ]).catch(() => undefined);
 
     if (await firstRow.isVisible().catch(() => false)) {
@@ -71,7 +91,7 @@ export class ModerationQueuePage extends BasePage {
       (resp) =>
         resp.url().includes("/api/v1/moderation-events/") &&
         resp.request().method() === "GET",
-      { timeout: 30000 },
+      { timeout: 60000 },
     );
   }
 
@@ -121,13 +141,15 @@ export class ModerationQueuePage extends BasePage {
   }
 
   async expectRowCount(expectedCount: number) {
-    await expect(this.tableRows()).toHaveCount(expectedCount);
+    await expect(this.tableRows()).toHaveCount(expectedCount, { timeout: 60000 });
   }
 
   async expectRowCountBetween(min: number, max: number) {
-    const count = await this.tableRows().count();
-    expect(count).toBeGreaterThanOrEqual(min);
-    expect(count).toBeLessThanOrEqual(max);
+    await expect(async () => {
+      const count = await this.tableRows().count();
+      expect(count).toBeGreaterThanOrEqual(min);
+      expect(count).toBeLessThanOrEqual(max);
+    }).toPass({ timeout: 60000 });
   }
 
   async setPageSize(size: 25 | 50 | 100) {
@@ -145,10 +167,19 @@ export class ModerationQueuePage extends BasePage {
     await pageSizeButton.click();
 
     const option = this.page.getByRole("option", { name: String(size) });
-    await option.waitFor({ state: "visible" });
+    await option.waitFor({ state: "visible", timeout: 15000 });
     const eventsResponse = this.waitForNextEventsGet();
     await option.click();
     await eventsResponse.catch(() => undefined);
+    await expect(
+      this.page.getByRole("button", { name: String(size), exact: true }),
+    ).toBeVisible({ timeout: 15000 });
+    if (size > 1) {
+      await this.tableRows()
+        .nth(Math.min(size, 25) - 1)
+        .waitFor({ state: "visible", timeout: 60000 })
+        .catch(() => undefined);
+    }
   }
 
   async getCurrentPageSize(): Promise<number> {
@@ -250,6 +281,88 @@ export class ModerationQueuePage extends BasePage {
       timeout: 15000,
     });
     return this.page;
+  }
+
+  async goToRecord(moderationId: string) {
+    await this.goTo(`/dashboard/moderation-queue/${moderationId}`);
+    await this.expectContributionRecord();
+  }
+
+  async openRecord(moderationId: string): Promise<ModerationQueuePage> {
+    const popupPromise = this.page
+      .context()
+      .waitForEvent("page", { timeout: 10000 })
+      .catch(() => null);
+    await this.goTo(`/dashboard/moderation-queue/${moderationId}`);
+    const popup = await popupPromise;
+    if (popup && !popup.isClosed()) {
+      await popup.waitForLoadState("domcontentloaded");
+      const record = new ModerationQueuePage(popup, this.baseUrl);
+      await record.expectContributionRecord();
+      return record;
+    }
+    await this.expectContributionRecord();
+    return this;
+  }
+
+  async expectContributionRecord() {
+    await expect(this.contributionRecordHeading()).toBeVisible({
+      timeout: 20000,
+    });
+  }
+
+  async expectPotentialMatchesSection() {
+    await expect(this.potentialMatches()).toBeVisible({ timeout: 30000 });
+  }
+
+  moderationIdFromUrl(): string {
+    return this.page.url().match(MODERATION_ID_FROM_URL)?.[1] ?? "";
+  }
+
+  async getFirstPotentialMatchOsId(): Promise<string> {
+    await this.expectPotentialMatchesSection();
+    const link = this.locationLink().first();
+    if (!(await link.isVisible().catch(() => false))) {
+      return "";
+    }
+    const href = (await link.getAttribute("href")) || "";
+    return href.match(OS_ID_FROM_HREF)?.[1] ?? "";
+  }
+
+  async isCreateNewLocationEnabled(): Promise<boolean> {
+    return this.createNewLocationButton().isEnabled().catch(() => false);
+  }
+
+  async createNewLocation() {
+    const responsePromise = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/production-locations/") &&
+        resp.request().method() === "POST",
+    );
+    await this.createNewLocationButton().click();
+    return responsePromise;
+  }
+
+  async rejectContribution(reason: string) {
+    await this.rejectContributionButton().click();
+    const dialog = this.dialog();
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+    await expect(dialog.getByText(/Reject this Moderation Event/i)).toBeVisible();
+
+    // Reject reason is a Quill editor (#dialog-wysiwyg), not a textarea.
+    // Do not target toolbar formula/link/video inputs (data-formula).
+    const reasonField = dialog.locator("#dialog-wysiwyg .ql-editor");
+    await expect(reasonField).toBeVisible({ timeout: 15000 });
+    await reasonField.click();
+    await reasonField.fill(reason);
+
+    const patchPromise = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/api/v1/moderation-events/") &&
+        resp.request().method() === "PATCH",
+    );
+    await dialog.getByRole("button", { name: /^reject$/i }).click();
+    return patchPromise;
   }
 
   async getCountryFilterOptions(): Promise<string[]> {

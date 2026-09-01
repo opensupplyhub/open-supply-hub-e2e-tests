@@ -5,7 +5,6 @@ import { setup } from "./utils/env";
 import { LoginPage } from "./pages/LoginPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { ModerationQueuePage, MODERATION_QUEUE_COLUMNS } from "./pages/ModerationQueuePage";
-import { ContributionRecordPage } from "./pages/ContributionRecordPage";
 import { SingleLocationContributionPage } from "./pages/SingleLocationContributionPage";
 import {
   loginAdminToModerationQueue,
@@ -362,7 +361,7 @@ test.describe("[@regression] OSDEV-2283 Moderation Queue regression tests", () =
     ).toHaveText("N/A");
 
     const recordPage = await queue.openContributionRecord(pendingRow);
-    const record = new ContributionRecordPage(recordPage, BASE_URL!);
+    const record = new ModerationQueuePage(recordPage, BASE_URL!);
     await record.expectContributionRecord();
 
     const moderationId = record.moderationIdFromUrl();

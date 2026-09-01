@@ -1,15 +1,44 @@
-import { test, expect, chromium, Frame } from "@playwright/test";
+import { test, expect, chromium, Frame, Page } from "@playwright/test";
 import { setup } from "./utils/env";
 import { get } from "./utils/api";
 import { LoginPage } from "./pages/LoginPage";
 import { MainPage, MAP_PATH } from "./pages/MainPage";
 import { AdminPage } from "./pages/AdminPage";
+import { ContributePage } from "./pages/ContributePage";
+import { SingleLocationContributionPage } from "./pages/SingleLocationContributionPage";
+import { ContributeListPage } from "./pages/ContributeListPage";
+import { MyListsPage } from "./pages/MyListsPage";
+import {
+  uploadFacilityList,
+  waitForListItems,
+  waitForListToAppear,
+} from "./utils/facilityLists";
 import path from "path";
 import fs from "fs";
-import os from "os";
 import ExcelJS, { Row, CellValue } from "exceljs";
 
 test.beforeAll(setup);
+
+async function openUploadFormAsWebsiteUser(page: Page) {
+  const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
+  const loginPage = new LoginPage(page, BASE_URL!);
+  const mainPage = new MainPage(page, BASE_URL!);
+  const contributePage = new ContributePage(page, BASE_URL!);
+  const listPage = new ContributeListPage(page, BASE_URL!);
+  const listsPage = new MyListsPage(page, BASE_URL!);
+
+  await listPage.goToUploadForm();
+  await loginPage.expectLoginRequiredNotice(
+    "Log in to contribute to Open Supply Hub",
+    "Contribute",
+  );
+  await loginPage.loginFromContributeLink(USER_EMAIL!, USER_PASSWORD!);
+  await mainPage.openAddData();
+  await contributePage.expectContributeHome();
+  await contributePage.openUploadMultipleLocations();
+  await listPage.expectUploadForm();
+  return { listPage, listsPage, loginPage };
+}
 
 test("[@smokev1][@smokev2] OSDEV-1219: Smoke: Main page. Log-in with valid credentials", async ({
   page,
@@ -125,326 +154,63 @@ uploadScenarios.forEach(
       test(`[@smokev1][@smokev2] Successful list uploading in ${format} format.`, async ({
         page,
       }) => {
-        test.setTimeout(25 * 60 * 1000); // Set custom timeout for all test
-        const { BASE_URL, VERSION_TAG = "v0.0.0" } = process.env;
-        await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+        test.setTimeout(25 * 60 * 1000);
+        const { listPage, listsPage, loginPage } =
+          await openUploadFormAsWebsiteUser(page);
 
-        await expect(
-          page.getByRole("heading", { name: "Contribute" })
-        ).toBeVisible();
-        await page
-          .getByRole("link", {
-            name: "Log in to contribute to Open Supply Hub",
-          })
-          .click();
-        await expect(
-          page.getByRole("heading", { name: "Log In" })
-        ).toBeVisible();
-
-        // Log in to the main page
-        const { USER_EMAIL, USER_PASSWORD } = process.env;
-        await page.getByLabel("Email").fill(USER_EMAIL!);
-        await page
-          .getByRole("textbox", { name: "Password" })
-          .fill(USER_PASSWORD!);
-        await page.getByRole("button", { name: "Log In" }).click();
-        await page.waitForLoadState("networkidle");
-
-        // Navigate to Upload Multiple Locations page
-        const addDataText = "Add Data";
-        page
-          .locator(`div.nav-item a.button:has-text("${addDataText}")`)
-          .click({ force: true });
-        await expect(
-          page.getByRole("heading", {
-            name: "Add production location data to OS Hub",
-          })
-        ).toBeVisible();
-
-        await page
-          .getByRole("button", { name: "Upload Multiple Locations" })
-          .click();
-        await expect(
-          page.getByRole("heading", { name: "Upload" })
-        ).toBeVisible();
-
-        // Fill in the form fields
-        const nameInput = page.getByLabel(
-          "Enter the name for this facility list"
-        );
-        await nameInput.fill(`${listName} ${VERSION_TAG}`);
-        await expect(nameInput).toHaveValue(`${listName} ${VERSION_TAG}`);
-
-        const descriptionInput = page.getByLabel(
-          "Enter a description of this facility list and include a timeframe for the list's validity"
-        );
-        await descriptionInput.fill(description);
-        await expect(descriptionInput).toHaveValue(description);
-
-        await page
-          .getByRole("button", { name: /select facility list file/i })
-          .click();
-
-        // Original path
-        const originalFilePath = path.resolve(__dirname, `data/${fileName}`);
-        const newFileName = `${
-          path.parse(fileName).name
-        } ${VERSION_TAG}${path.extname(fileName)}`;
-
-        // Temp file path (in system temp dir)
-        const tempFilePath = path.join(os.tmpdir(), newFileName);
-
-        // Copy original file to new temp file with new name
-        fs.copyFileSync(originalFilePath, tempFilePath);
-
-        // Upload renamed temp file
-        const fileInput = page.locator("input[type='file']");
-        await fileInput.setInputFiles(tempFilePath);
-        await expect(
-          page.getByText(new RegExp(newFileName, "i"))
-        ).toBeVisible();
-
-        // Submit the form
-        const submitButton = page.getByRole("button", { name: /submit/i });
-        await submitButton.scrollIntoViewIfNeeded();
-        await expect(submitButton).toBeEnabled();
-        await submitButton.click();
-        const response = await page.waitForResponse(
-          (resp) =>
-            resp.url().includes("/api/facility-lists/") && resp.status() === 200
-        );
-
-        // Delete temp file
-        fs.unlinkSync(tempFilePath);
-
-        // Get the list ID
-        const data = await response.json();
-        const listId = data.id;
-        await page.waitForLoadState("networkidle");
-
-        const header = page.locator("h2", {
-          hasText: "Thank you for submitting your list!",
+        const uploaded = await uploadFacilityList(page, {
+          fileName,
+          listName,
+          description,
         });
-        await expect(header).toBeVisible();
+        await listPage.dismissSubmittedDialog();
 
-        const toMainButton = page.getByRole("button", {
-          name: /GO TO THE MAIN PAGE/i,
+        await loginPage.openMyLists();
+        await listsPage.expectMyLists();
+        await listsPage.expectFirstRow({
+          name: uploaded.listName,
+          description,
+          fileName: uploaded.fileName,
         });
-        await expect(toMainButton).toBeVisible();
+        await listsPage.openListByName(uploaded.listName);
 
-        const refreshButton = page.getByRole("button", { name: /REFRESH/i });
-        await expect(refreshButton).toBeVisible();
-        await toMainButton.click();
+        await waitForListToAppear(page, uploaded.listId);
+        await waitForListItems(page, uploaded.listId);
 
-        await page.getByRole("button", { name: "My Account" }).click();
-        await page.getByRole("link", { name: "My Lists" }).click();
-        await expect(
-          page.getByRole("heading", { name: "My Lists" })
-        ).toBeVisible();
+        await listsPage.goToList(uploaded.listId);
+        await listsPage.expectListHeading(uploaded.listName);
+        await listsPage.expectListDetail("PENDING");
 
-        // Uploaded list is visible on My Lists page
-        await page.waitForSelector("table tbody tr:first-child", {
-          timeout: 10000,
-        });
-        const row = page.locator("table tbody tr:first-child");
-        await expect(row).toBeVisible();
-
-        const headers = page.locator("table thead tr th");
-        const columns = [
-          {
-            name: "Name",
-            value: `${listName} ${VERSION_TAG}`,
-          },
-          {
-            name: "Description",
-            value: description,
-          },
-          {
-            name: "File Name",
-            value: newFileName,
-          },
-        ];
-
-        for (const [index, column] of columns.entries()) {
-          await expect(headers.nth(index)).toHaveText(column.name);
-          await expect(row.locator("td").nth(index)).toHaveText(column.value);
-        }
-
-        await page
-          .locator(`tr:has-text("${listName} ${VERSION_TAG}")`)
-          .first()
-          .click({ force: true });
-
-        // Poll repeatedly checks whether the result is ready, with timeouts to avoid hard waits.
-        await expect
-          .poll(
-            async () => {
-              const response = await page.request.get(
-                `${BASE_URL}/api/facility-lists/${listId}/`
-              );
-              const data = await response.json();
-              return data["statuses"].length;
-            },
-            {
-              message: "/facility-lists/id return statuses (parsed)",
-              intervals: [30000],
-              timeout: 1600000,
-            }
-          )
-          .not.toBe(0);
-
-        await expect
-          .poll(
-            async () => {
-              const response = await page.request.get(
-                `${BASE_URL}/api/facility-lists/${listId}/items/?page=1&pageSize=20/`
-              );
-              const data = await response.json();
-              return data["count"];
-            },
-            {
-              message:
-                "/facility-lists/id/items/?page=1&pageSize=20 return count of parsed facilities",
-              intervals: [30000],
-              timeout: 1600000,
-            }
-          )
-          .not.toBe(0);
-
-        await page.goto(`${BASE_URL}/lists/${listId}`);
-        await page.waitForLoadState("networkidle");
-
-        // Post uploading errors occurred while parsing your list.
-        await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
-        await expect(
-          page.getByRole("heading", { name: "List Status" })
-        ).toBeVisible();
-        await expect(
-          page.getByRole("heading", { name: "PENDING" })
-        ).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: /Download formatted file/i })
-        ).toBeVisible();
-        await expect(page.getByText(/Download submitted file/i)).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: /Back to lists/i })
-        ).toBeVisible();
-
-        // Post-uploading errors occurred while parsing your list.
-        await page.waitForSelector(`h2:has-text("${listName} ${VERSION_TAG}")`);
-        await expect(
-          page.getByRole("heading", { name: "List Status" })
-        ).toBeVisible();
-        await expect(
-          page.getByRole("heading", { name: "PENDING" })
-        ).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: /Download formatted file/i })
-        ).toBeVisible();
-        await expect(page.getByText(/Download submitted file/i)).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: /Back to lists/i })
-        ).toBeVisible();
         await page.evaluate(() => {
-          window.scrollBy(0, 100); // scroll down 100px
+          window.scrollBy(0, 100);
         });
 
-        await page.locator(".select__value-container").click(); //
-        await page.locator(".select__option:has-text('ERROR_PARSING')").click();
-        await expect(page.locator(".select__multi-value__label")).toHaveText(
-          /ERROR_PARSING/
-        );
-        await page.waitForLoadState("networkidle");
+        await listsPage.filterItemsByStatus("ERROR_PARSING");
+        await listsPage.expectErrorRowCount(numberOfErrors);
 
-        const errorRows = page.locator("table tbody tr");
-        const errorRowsCount = await errorRows.count();
-        expect(errorRowsCount).toBe(numberOfErrors);
-
-        for (let i = 0; i < errorRowsCount; i++) {
-          await page.evaluate(() => window.scrollBy(0, 100));
-          // Click the row with a small delay before
-          await errorRows.nth(i).click({ force: true, timeout: 5000 });
-
-          await expect(page.locator("text=Errors")).toBeVisible();
-          await expect(page.locator(`text=${errorText[i]}`)).toBeVisible();
-          // Close expanded row
-          await errorRows.nth(i).click({ force: true, timeout: 5000 });
+        for (let i = 0; i < numberOfErrors; i++) {
+          await listsPage.toggleErrorRow(i);
+          await listsPage.expectExpandedRowError(errorText[i]);
+          await listsPage.toggleErrorRow(i);
         }
       });
 
       test(`[@smokev1][@smokev2] The ${format} list validation before upload.`, async ({ page }) => {
-        const { BASE_URL } = process.env;
-        await page.goto(`${BASE_URL}/contribute/multiple-locations`);
+        const { listPage } = await openUploadFormAsWebsiteUser(page);
 
-        await expect(
-          page.getByRole("heading", { name: "Contribute" })
-        ).toBeVisible();
-        await page
-          .getByRole("link", {
-            name: "Log in to contribute to Open Supply Hub",
-          })
-          .click();
-        await expect(
-          page.getByRole("heading", { name: "Log In" })
-        ).toBeVisible();
-
-        // fill in login credentials
-        const { USER_EMAIL, USER_PASSWORD } = process.env;
-        await page.getByLabel("Email").fill(USER_EMAIL!);
-        await page
-          .getByRole("textbox", { name: "Password" })
-          .fill(USER_PASSWORD!);
-        await page.getByRole("button", { name: "Log In" }).click();
-        await page.waitForLoadState("networkidle");
-
-        // Navigate to Upload Multiple Locations page
-        const addDataText = "Add Data";
-        page
-          .locator(`div.nav-item a.button:has-text("${addDataText}")`)
-          .click({ force: true });
-        await expect(
-          page.getByRole("heading", {
-            name: "Add production location data to OS Hub",
-          })
-        ).toBeVisible();
-
-        await page
-          .getByRole("button", { name: "Upload Multiple Locations" })
-          .click();
-        await expect(
-          page.getByRole("heading", { name: "Upload" })
-        ).toBeVisible();
-
-        const submitButton = page.getByRole("button", { name: /submit/i });
-        await submitButton.scrollIntoViewIfNeeded();
-        await expect(submitButton).toBeEnabled();
-        await submitButton.click();
-
-        // Check that the error messages are visible
-        await expect(
-          page.locator(".form__field", {
-            hasText: "Missing required Facility List Name.",
-          })
-        ).toBeVisible();
-        await expect(
-          page.locator(".form__field", {
-            hasText: "Missing required Facility List File.",
-          })
-        ).toBeVisible();
-
-        // Fill in the form fields with invalid values
-        const nameInput = page.getByLabel(
-          "Enter the name for this facility list"
+        await listPage.clickSubmit();
+        await listPage.expectFieldError(
+          "Missing required Facility List Name.",
         );
-        await nameInput.fill('Test name!@@%^^&*()":,./ CO. LTD');
-        await expect(nameInput).toHaveValue('Test name!@@%^^&*()":,./ CO. LTD');
-        await submitButton.click();
-        await expect(
-          page.locator(".form__field", {
-            hasText:
-              "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.",
-          })
-        ).toBeVisible();
+        await listPage.expectFieldError(
+          "Missing required Facility List File.",
+        );
+
+        await listPage.fillListName('Test name!@@%^^&*()":,./ CO. LTD');
+        await listPage.clickSubmit();
+        await listPage.expectFieldError(
+          "The List Name you entered contains invalid characters. Allowed characters include: letters, numbers, spaces, apostrophe ( ' ), comma ( , ), hyphen ( - ), ampersand ( & ), period ( . ), parentheses ( ), and square brackets ( [] ). Characters that contain accents are not allowed.",
+        );
       });
     });
   }
@@ -655,31 +421,19 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
   const locationCountry = "China";
 
   await page.goto(`${BASE_URL}/contribute/single-location`!);
-
   await expect(
-    page.getByRole("heading", { name: "Production Location Search" })
+    page.getByRole("heading", { name: "Production Location Search" }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "Log in to contribute to Open Supply Hub" })
-    .click();
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 
   const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
-  await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-  await page
-    .getByRole("textbox", { name: "Password" })
-    .fill(USER_ADMIN_PASSWORD!);
-  await page.getByRole("button", { name: "Log In" }).click();
-
-  await page.getByRole("link", { name: "Add Data" }).click();
-  await expect(
-    page.getByRole("button", { name: "Add a Single Location" })
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Add a Single Location" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Production Location Search" })
-  ).toBeVisible();
+  const loginPage = new LoginPage(page, BASE_URL!);
+  const mainPage = new MainPage(page, BASE_URL!);
+  const contributePage = new ContributePage(page, BASE_URL!);
+  const slcPage = new SingleLocationContributionPage(page, BASE_URL!);
+  await loginPage.loginFromContributeLink(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
+  await mainPage.openAddData();
+  await contributePage.expectSingleLocationAccess();
+  await contributePage.openSingleLocation();
 
   const buttonSearchByName = page.locator("button", {
     hasText: "Search by Name and Address",
@@ -700,26 +454,14 @@ test("[@smokev1][@smokev2] OSDEV-1813: Smoke: SLC page is opened, user is able t
   const isNotSelected = await buttonSearchByOSID.getAttribute("aria-selected");
   expect(isNotSelected).toBe("false");
 
-  await page.getByPlaceholder("Type a name").fill(locationName);
-  await page.getByPlaceholder("Address").fill(locationAddress);
-
-  async function selectOption(id: string, optionID: string) {
-    await page.evaluate(() => window.scrollTo(0, 300));
-    await page.waitForLoadState("networkidle");
-
-    const selectQuery = `${id} .select__control .select__value-container`;
-    await page.waitForSelector(selectQuery);
-
-    const selectLocator = page.locator(selectQuery);
-    await selectLocator.waitFor({ state: "visible" });
-    await selectLocator.click();
-
-    const optionEl = page.locator(optionID);
-    await optionEl.click({ force: true });
-  }
-
-  await selectOption("#countries", "#react-select-3-option-45");
-  await page.getByRole("button", { name: "Search" }).click();
+  await slcPage.fillNameAddressSearch(
+    locationName,
+    locationAddress,
+    locationCountry,
+  );
+  const searchButton = page.getByRole("button", { name: "Search" });
+  await expect(searchButton).toBeEnabled();
+  await searchButton.click();
 
   await page.waitForResponse(
     async (resp) =>
@@ -1955,27 +1697,16 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
   test("[@smokev1][@smokev2] A moderator is able to work with the Moderation Queue page.", async ({
     page,
   }) => {
-    const { BASE_URL } = process.env;
+    const { BASE_URL, USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
+    const loginPage = new LoginPage(page, BASE_URL!);
+
     await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
     await page.waitForLoadState("networkidle");
-
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" })
-    ).toBeVisible();
-    await page
-      .getByRole("link", {
-        name: "Sign in to view your Open Supply Hub Dashboard",
-      })
-      .click();
-    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-
-    const { USER_ADMIN_EMAIL, USER_ADMIN_PASSWORD } = process.env;
-    await page.getByLabel("Email").fill(USER_ADMIN_EMAIL!);
-    await page
-      .getByRole("textbox", { name: "Password" })
-      .fill(USER_ADMIN_PASSWORD!);
-    await page.getByRole("button", { name: "Log In" }).click();
-    await page.waitForLoadState("networkidle");
+    await loginPage.expectLoginRequiredNotice(
+      "Sign in to view your Open Supply Hub Dashboard",
+      "Dashboard",
+    );
+    await loginPage.loginViaAuthPage(USER_ADMIN_EMAIL!, USER_ADMIN_PASSWORD!);
 
     await page.getByRole("button", { name: "My Account" }).click();
     await page.locator("#nav").getByRole("link", { name: "Dashboard" }).click();
@@ -2146,31 +1877,16 @@ test.describe("OSDEV-1812: Smoke: Moderation queue page is can be opened through
   test("[@smokev1][@smokev2] A regular user does not have an access to the Moderation Queue page.", async ({
     page,
   }) => {
-    const { BASE_URL } = process.env;
+    const { BASE_URL, USER_EMAIL, USER_PASSWORD } = process.env;
+    const loginPage = new LoginPage(page, BASE_URL!);
+
     await page.goto(`${BASE_URL}/dashboard/moderation-queue/`!);
     await page.waitForLoadState("networkidle");
-
-    // make sure that we can not open the Moderation queue page of Dashboard without authorization
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" })
-    ).toBeVisible();
-    await page
-      .getByRole("link", {
-        name: "Sign in to view your Open Supply Hub Dashboard",
-      })
-      .click();
-    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
-    await page.waitForLoadState("networkidle");
-
-    // fill in login with regular user credentials
-    const { USER_EMAIL, USER_PASSWORD } = process.env;
-    await page.getByLabel("Email").fill(USER_EMAIL!);
-    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD!);
-    await page.getByRole("button", { name: "Log In" }).click();
-    const resp = await page.waitForResponse(async (resp) =>
-      resp.url().includes("/user-login/")
+    await loginPage.expectLoginRequiredNotice(
+      "Sign in to view your Open Supply Hub Dashboard",
+      "Dashboard",
     );
-    expect(resp.status()).toBe(200);
+    await loginPage.loginViaAuthPage(USER_EMAIL!, USER_PASSWORD!);
 
     await page.goto(`${BASE_URL}/dashboard/moderation-queue/`);
     await expect(
