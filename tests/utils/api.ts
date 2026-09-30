@@ -395,12 +395,31 @@ export class FacilitiesApi extends ApiClient {
 
 export class ProductionLocationsApi extends ApiClient {
   async byCountry(country: string, size = 5, token = process.env.AUTH_TOKEN!) {
-    return this.jsonList<ProductionLocation>(
-      "/api/v1/production-locations/",
-      { authenticate: Boolean(token), token, params: { country, size } },
-      "GET production-locations",
-      ["data", "results"],
-    );
+    const url = "/api/v1/production-locations/";
+    let lastError = "GET production-locations failed";
+
+    // v1 list can 500 after ~10s (OpenSearch/gunicorn); CloudFront then
+    // serves that error for the same query string. Retry with a bust param.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const response = await this.fetch(url, {
+        authenticate: Boolean(token),
+        token,
+        params: { country, size, _: Date.now() },
+      });
+      if (response.ok()) {
+        return asList<ProductionLocation>(await response.json(), ["data", "results"]);
+      }
+
+      const status = response.status();
+      const body = await response.text().catch(() => "");
+      lastError = `GET production-locations failed: HTTP ${status} ${body.slice(0, 400)}`;
+      if (status < 500 || attempt === 3) {
+        throw new Error(lastError);
+      }
+      await this.page.waitForTimeout(1500 * attempt);
+    }
+
+    throw new Error(lastError);
   }
 
   /**

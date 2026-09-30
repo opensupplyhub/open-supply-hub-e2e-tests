@@ -32,9 +32,15 @@ export class GeocoderPage extends BasePage {
   async selectCountry(countryName: string) {
     const container = this.page.locator("#COUNTRIES").first();
     await container.click();
+    const options = this.page.locator("[id^='react-select-'][id*='-option-']");
+    await expect(options.first()).toBeAttached({ timeout: 15000 });
     const input = container.locator('input[id^="react-select-"]').first();
-    await input.fill(countryName);
-    await this.page.getByText(countryName, { exact: true }).last().click();
+    await input.pressSequentially(countryName, { delay: 40 });
+    const option = options.filter({
+      hasText: new RegExp(`^${countryName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+    });
+    await expect(option).toBeVisible({ timeout: 15000 });
+    await option.click();
   }
 
   async fillAddress(address: string) {

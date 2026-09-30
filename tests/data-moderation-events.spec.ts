@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { setup, skipIfMutatingNotAllowed } from "./utils/env";
 import { loginAdminToModerationQueue } from "./utils/moderationQueue";
-import { ContributionRecordPage } from "./pages/ContributionRecordPage";
+import { ModerationQueuePage } from "./pages/ModerationQueuePage";
 import { fetchModerationEvents } from "./utils/moderationApi";
 
 test.beforeAll(setup);
 
-test.describe("[@regression] Contribution Record API integration", () => {
+test.describe("[@regression] Moderation events", () => {
   test.setTimeout(3 * 60 * 1000);
 
   async function openPendingContributionRecord(
@@ -28,15 +28,10 @@ test.describe("[@regression] Contribution Record API integration", () => {
     test.skip(pending.data.length < 1, "No PENDING moderation events available");
 
     const moderationId = pending.data[0].moderation_id;
-    const detailPagePromise = page.context().waitForEvent("page").catch(() => null);
-    await page.goto(`${BASE_URL}/dashboard/moderation-queue/${moderationId}`);
-    // Some builds open in same tab; others may popup — handle both.
-    const popup = await detailPagePromise;
-    const recordPage = popup && !popup.isClosed() ? popup : page;
-    await recordPage.waitForLoadState("domcontentloaded");
-    const record = new ContributionRecordPage(recordPage, BASE_URL!);
-    await record.expectContributionRecord();
-    return { queue, recordPage, record, moderationId };
+    const record = await new ModerationQueuePage(page, BASE_URL!).openRecord(
+      moderationId,
+    );
+    return { record };
   }
 
   test("[@regression] OSDEV-1594: Opening contribution record triggers GET moderation-events/{id}/", async ({
@@ -58,18 +53,16 @@ test.describe("[@regression] Contribution Record API integration", () => {
     test.skip(pending.data.length < 1, "No PENDING moderation events available");
     const moderationId = pending.data[0].moderation_id;
 
+    const record = new ModerationQueuePage(page, BASE_URL!);
     const responsePromise = page.waitForResponse(
       (resp) =>
         resp.url().includes(`/api/v1/moderation-events/${moderationId}`) &&
         resp.request().method() === "GET",
       { timeout: 30000 },
     );
-    await page.goto(`${BASE_URL}/dashboard/moderation-queue/${moderationId}`);
+    await record.goToRecord(moderationId);
     const response = await responsePromise;
     expect(response.status()).toBe(200);
-
-    const record = new ContributionRecordPage(page, BASE_URL!);
-    await record.expectContributionRecord();
   });
 
   test("[@regression] OSDEV-1598: Potential Matches are loaded on contribution record", async ({
@@ -83,13 +76,10 @@ test.describe("[@regression] Contribution Record API integration", () => {
     page,
   }) => {
     skipIfMutatingNotAllowed(test);
-    const { recordPage, record } = await openPendingContributionRecord(page);
+    const { record } = await openPendingContributionRecord(page);
 
-    const createBtn = recordPage.getByRole("button", {
-      name: /create new location/i,
-    });
     test.skip(
-      !(await createBtn.isEnabled().catch(() => false)),
+      !(await record.isCreateNewLocationEnabled()),
       "Create New Location not enabled",
     );
 
