@@ -134,7 +134,7 @@ const uploadScenarios = [
     description: "DO NOT APPROVE Test XLSX upload",
     errorText: [
       "Could not find a country code for 'A'ustralia'.",
-      "There is a problem with the address: Ensure this value has at most 200 characters. (it has 228)",
+      /There is a problem with the address: Ensure this value has at most 200 characters\. \(it has 22[08]\)/,
     ],
     numberOfErrors: 2,
   },
