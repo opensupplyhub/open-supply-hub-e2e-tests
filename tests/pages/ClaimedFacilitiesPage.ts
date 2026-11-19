@@ -3,7 +3,7 @@ import { BasePage } from "./BasePage";
 
 export class ClaimedFacilitiesPage extends BasePage {
   private heading = () =>
-    this.page.getByRole("heading", { name: "My Claimed Facilities" });
+    this.page.getByRole("heading", { name: "My Facility Claims" });
   private tableRows = () => this.page.locator("table tbody tr");
   private detailsHeading = () =>
     this.page.getByRole("heading", { name: "Claimed Facility Details" });
