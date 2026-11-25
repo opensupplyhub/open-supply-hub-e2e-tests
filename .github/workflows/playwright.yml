@@ -31,9 +31,12 @@ jobs:
       VERSION_TAG: ${{ github.event.inputs.version_tag}}
     steps:
       - name: Display environment
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          VERSION_TAG: ${{ github.event.inputs.version_tag }}
         run: |
-          echo "Deploying to ${{ github.event.inputs.environment }}"
-          echo "Version Tag: ${{ github.event.inputs.version_tag }}"
+          echo "Deploying to $ENVIRONMENT"
+          echo "Version Tag: $VERSION_TAG"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
